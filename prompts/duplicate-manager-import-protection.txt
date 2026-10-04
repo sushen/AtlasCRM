@@ -1,0 +1,219 @@
+TASK NAME:
+Atlas CRM — Duplicate Manager & Import Protection
+
+PROJECT:
+Atlas CRM
+
+GOAL:
+Build permanent duplicate-customer management into Atlas CRM and permanently prevent duplicate phone numbers from being created during future imports.
+
+IMPORTANT:
+This is a live Firebase/Firestore CRM. Inspect the existing project before changing anything. Preserve the current architecture, authentication, UI style, customer data model, and working features.
+
+CURRENT ISSUE:
+The Firebase implementation of createCustomer() currently creates customer documents with addDoc() without independently enforcing uniqueness by normalizedPhone. Repeated imports can therefore create multiple customer documents for the same WhatsApp/phone number.
+
+IMPLEMENTATION REQUIREMENTS:
+
+1. ADD "MANAGE DUPLICATES" TO CONTACTS
+
+Add a "Manage duplicates" button/action to the Contacts / Customers and Leads screen.
+
+When opened, scan the customers collection and group records using normalizedPhone.
+
+Display:
+
+- Total customer records
+- Total unique phone numbers
+- Number of duplicate groups
+- Number of duplicate records that could be removed
+
+Example:
+
++8801712345678
+3 records
+2 duplicates
+
+Allow the operator to inspect each duplicate group before modifying anything.
+
+
+2. DUPLICATE GROUP ACTIONS
+
+For each duplicate group provide:
+
+- View records
+- Merge duplicates
+- Delete selected duplicate
+
+Also provide:
+
+- Merge All Duplicates
+
+Never delete records merely because the duplicate-management screen was opened.
+
+
+3. SAFE MERGING
+
+When merging duplicate customer records, select one customer document as the canonical/master customer.
+
+Prefer the record containing the most useful CRM information rather than blindly choosing an arbitrary document.
+
+Preserve useful fields such as:
+
+- name
+- phone / normalizedPhone / whatsappNumber
+- status
+- customerStatus
+- tags
+- notes
+- importedAt
+- createdAt
+- updatedAt
+- firstContactedAt
+- lastContactedAt
+- lastReplyAt
+- nextFollowUpAt
+- contactAttempts
+- source
+- sourceGroup
+
+Do not overwrite useful non-empty information with empty/default values.
+
+Before deleting duplicate customer documents, find related records whose customerId references those duplicate IDs.
+
+Handle at least:
+
+- activities
+- followups
+- purchases
+- subscriptions
+
+Reassign their customerId to the retained master customer.
+
+Only after related records have been successfully reassigned may the redundant customer document be deleted.
+
+Add an activity to the retained customer describing the merge.
+
+
+4. CONFIRMATION
+
+For destructive operations show a clear confirmation explaining:
+
+- phone number
+- number of records being merged
+- customer record being retained
+- number of duplicate customer documents being removed
+
+"Merge All Duplicates" must require explicit confirmation.
+
+Disable action buttons while an operation is running so double-clicking cannot execute the merge twice.
+
+
+5. FIX FUTURE IMPORTS
+
+Duplicate cleanup alone is insufficient.
+
+Modify the customer creation/import flow so importing the same normalized phone number again does NOT create another Firestore customer document.
+
+The protection must exist in the data/service layer, not only in the import preview UI.
+
+createCustomer() should return the existing customer with duplicate:true when that normalized phone already exists.
+
+The import UI should count that record as skipped/existing rather than creating another document.
+
+Do not rely exclusively on the initial import preview because the database can change between preview and confirmation.
+
+
+6. IMPORT BUTTON PROTECTION
+
+Prevent an import confirmation from executing multiple times because of repeated clicks.
+
+Immediately disable the Import button after the operation starts.
+
+Show progress if practical.
+
+Replace the current blocking success alert with a non-blocking result message such as:
+
+Imported: X
+Already existed: X
+Duplicates in file: X
+Invalid: X
+
+The operator should not receive repeated success popup dialogs.
+
+
+7. FIRESTORE SAFETY
+
+Use Firestore batch writes where appropriate.
+
+Respect Firestore batch-operation limits; chunk large merge operations when necessary.
+
+Do not leave partially migrated customer references if an operation fails.
+
+Surface useful errors to the operator.
+
+Do not modify Firebase credentials or authentication configuration.
+
+
+8. DEMO MODE
+
+Do not break the existing local/demo mode.
+
+Implement equivalent duplicate detection/merge behavior there where reasonable, or cleanly isolate Firebase-specific operations while keeping the application functional.
+
+
+9. UI
+
+Keep the existing Atlas CRM visual design.
+
+The duplicate manager should feel like part of the current application, not an external administration script.
+
+Suggested flow:
+
+Contacts
+  → Manage duplicates
+      → Scan
+      → Duplicate groups
+      → Review
+      → Merge selected
+
+Include a clear "No duplicates found" state.
+
+
+10. TEST BEFORE DEPLOYMENT
+
+Verify:
+
+- duplicate scanning works
+- unique contacts are never marked as duplicates
+- phone normalization is respected
+- merging keeps exactly one customer
+- related activities are preserved
+- follow-ups are preserved
+- purchases are preserved
+- subscriptions are preserved
+- repeated clicking cannot execute the operation twice
+- importing an existing number does not create another customer
+- importing the same file twice does not create duplicate customers
+- new numbers still import normally
+- Contacts renders correctly after cleanup
+- dashboard counts update correctly
+- existing WhatsApp/status/follow-up functionality still works
+- authentication still works
+
+Do not blindly delete live data during testing.
+
+First validate duplicate detection without mutation.
+
+After implementation and validation, report:
+
+1. files changed
+2. duplicate-management architecture
+3. how canonical/master records are selected
+4. how related records are migrated
+5. how future duplicate creation is prevented
+6. tests performed and results
+7. any Firestore rules/index changes required
+8. exact deployment command
+
+If validation passes, deploy the updated Atlas CRM using the project's existing Firebase Hosting deployment workflow.

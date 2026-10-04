@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atlas CRM</title>
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body><div id="app"><main class="content"><p class="muted">Loading Atlas CRM...</p></main></div><script type="module">
+  import('./js/app.js').catch(error => {
+    console.error('Atlas CRM startup failed while loading modules.', error);
+    const message = error instanceof Error ? error.message : String(error);
+    const app = document.querySelector('#app');
+    if (app) {
+      const safe = message.replace(/[&<>\"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[character]));
+      app.innerHTML = '<main class="content"><div class="card card-pad"><h1>Atlas CRM could not start</h1><p class="error">' + safe + '</p><p class="muted">Check the browser console for the full diagnostic, then reload the page.</p></div></main>';
+    }
+  });
+</script></body>
+</html>

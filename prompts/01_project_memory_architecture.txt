@@ -1,0 +1,987 @@
+PROMPT NAME:
+Atlas CRM — Project Memory, Architecture & Agent Documentation Bootstrap
+
+TASK TYPE:
+Project infrastructure / persistent AI-agent context
+
+PROJECT:
+Atlas CRM
+
+OBJECTIVE:
+Create a durable documentation and project-memory system so that any future Codex session or coding agent can enter this repository with zero previous conversation context, understand the project, understand its architecture and current state, and continue development safely.
+
+This task is primarily about PROJECT KNOWLEDGE INFRASTRUCTURE, not new application features.
+
+==================================================
+1. FIRST: INSPECT THE REPOSITORY
+==================================================
+
+Before creating or changing anything:
+
+- inspect the complete repository structure
+- inspect existing HTML/CSS/JavaScript
+- inspect Firebase configuration
+- inspect Firestore rules/indexes
+- inspect README files
+- inspect existing documentation
+- inspect existing prompts
+- inspect tests
+- inspect .gitignore
+- inspect git status
+- inspect recent git history
+
+Do not assume this prompt perfectly describes the current implementation.
+
+The actual repository is the primary source of truth.
+
+Clearly distinguish:
+
+CURRENT
+PLANNED
+PROPOSED
+DEPRECATED
+UNKNOWN
+
+Never describe a planned feature as already implemented.
+
+==================================================
+2. PROJECT IDENTITY
+==================================================
+
+Project name:
+
+Atlas CRM
+
+Atlas CRM is a private, lightweight CRM centered around managing WhatsApp leads/customers and tracking their journey.
+
+Core conceptual journey:
+
+WhatsApp Number
+→ Imported Lead
+→ Not Contacted
+→ Contacted
+→ Replied
+→ Interested
+→ Customer
+→ Follow-up
+→ Purchase / Subscription / Renewal
+
+Current intended technology:
+
+- HTML5
+- CSS3
+- Vanilla JavaScript
+- ES Modules
+- Firebase
+- Firestore
+- Firebase Authentication
+- Firebase Hosting where appropriate
+
+Do not introduce React, Vue, Angular, TypeScript, Express, or another major framework unless explicitly requested.
+
+Atlas CRM is NOT WhatsApp.
+
+WhatsApp remains an external communication system.
+
+Atlas manages the customer/business journey surrounding those conversations.
+
+Opening WhatsApp does not prove that a message was sent, delivered, read, or replied to.
+
+Those events must be manually recorded unless a future official integration supplies reliable events.
+
+==================================================
+3. CREATE THE PROJECT KNOWLEDGE SYSTEM
+==================================================
+
+Create or adapt this structure:
+
+AtlasCRM/
+│
+├── AGENTS.md
+├── README.md
+├── .gitignore
+│
+├── docs/
+│   ├── PROJECT.md
+│   ├── ARCHITECTURE.md
+│   ├── DATA_MODEL.md
+│   ├── CUSTOMER_JOURNEY.md
+│   ├── FIREBASE.md
+│   ├── SECURITY.md
+│   ├── DEVELOPMENT.md
+│   ├── TESTING.md
+│   ├── DEPLOYMENT.md
+│   ├── ROADMAP.md
+│   ├── CURRENT_STATE.md
+│   ├── CHANGELOG.md
+│   │
+│   └── decisions/
+│       ├── README.md
+│       ├── 0001-vanilla-js.md
+│       ├── 0002-firebase.md
+│       └── 0003-whatsapp-boundary.md
+│
+├── prompts/
+│   └── README.md
+│
+└── application source...
+
+Do not create duplicate documents if equivalent authoritative documents already exist.
+
+Improve or consolidate them instead.
+
+==================================================
+4. AGENTS.md — THE AGENT ENTRY POINT
+==================================================
+
+AGENTS.md is the most important document.
+
+It should be concise enough that every future coding agent can read it before beginning work.
+
+It must explain:
+
+PROJECT IDENTITY
+
+Atlas CRM
+
+PURPOSE
+
+Private WhatsApp-oriented lead/customer journey CRM.
+
+PRIMARY FLOW
+
+Contact
+→ Conversation
+→ Follow-up
+→ Customer
+→ Purchase
+→ Subscription
+→ Renewal
+
+TECHNOLOGY
+
+Document the actual technology discovered in the repository.
+
+ARCHITECTURAL RULES
+
+Future agents MUST:
+
+- inspect existing code before changing it
+- read project documentation before substantial work
+- preserve the framework-free architecture unless explicitly instructed otherwise
+- keep UI, business logic, Firebase access and utilities separated
+- preserve customer history
+- normalize phone numbers consistently
+- preserve Firestore security
+- use server timestamps where appropriate
+- protect private customer information
+- test affected functionality
+- update documentation when architecture or project state materially changes
+
+Future agents MUST NOT:
+
+- silently replace the technology stack
+- introduce unnecessary frameworks
+- hardcode real customers
+- commit customer datasets
+- commit WhatsApp HTML exports
+- expose customer numbers in public static files
+- commit service-account keys or secrets
+- weaken Firestore security just to make something work
+- manipulate WhatsApp Web DOM
+- treat "WhatsApp opened" as "message sent"
+- invent project state
+
+==================================================
+5. REQUIRED READING ORDER
+==================================================
+
+Add this to AGENTS.md.
+
+Before substantial work, future agents should read:
+
+1. AGENTS.md
+2. docs/PROJECT.md
+3. docs/CURRENT_STATE.md
+4. docs/ARCHITECTURE.md
+5. documentation relevant to the requested task
+6. actual affected source files
+
+For database work additionally read:
+
+- docs/DATA_MODEL.md
+- docs/FIREBASE.md
+- docs/SECURITY.md
+
+For customer workflow work read:
+
+- docs/CUSTOMER_JOURNEY.md
+
+For deployment read:
+
+- docs/DEPLOYMENT.md
+- docs/SECURITY.md
+
+==================================================
+6. CONTEXT RECOVERY PROTOCOL
+==================================================
+
+Create a section in AGENTS.md named:
+
+Context Recovery
+
+A completely new agent with ZERO previous conversation history should recover context using:
+
+1. Read AGENTS.md.
+2. Read docs/PROJECT.md.
+3. Read docs/CURRENT_STATE.md.
+4. Inspect git status.
+5. Inspect recent git log.
+6. Read docs/ARCHITECTURE.md.
+7. Read relevant domain documentation.
+8. Inspect the actual affected code.
+9. Compare documentation against implementation.
+10. Resolve important discrepancies before changing code.
+
+The repository must remain understandable even when previous ChatGPT/Codex conversations are unavailable.
+
+==================================================
+7. PROJECT.md
+==================================================
+
+Document:
+
+- what Atlas CRM is
+- problem being solved
+- intended user
+- product philosophy
+- current scope
+- non-goals
+- terminology
+- customer lifecycle
+- WhatsApp relationship
+- future direction
+
+Make the architectural boundary explicit:
+
+Atlas CRM manages customer workflow.
+
+WhatsApp manages communication.
+
+Atlas may generate supported WhatsApp links.
+
+Atlas must not assume WhatsApp events occurred merely because a link was opened.
+
+==================================================
+8. ARCHITECTURE.md
+==================================================
+
+Document the REAL architecture discovered in the repository.
+
+Include an understandable architecture diagram.
+
+Conceptually:
+
+Browser
+   │
+   ▼
+Atlas CRM
+   │
+   ├── UI / Views
+   ├── Services
+   ├── Utilities
+   ├── Authentication
+   │
+   ▼
+Firebase
+   │
+   ├── Authentication
+   └── Firestore
+
+External boundary:
+
+Atlas CRM
+   │
+   │ supported WhatsApp link
+   ▼
+WhatsApp
+
+Document:
+
+- application startup
+- authentication
+- rendering/view architecture
+- modules
+- service layer
+- Firestore access
+- utilities
+- imports
+- activity tracking
+- customer workflow
+- follow-ups
+- WhatsApp URL generation
+- error handling
+- configuration
+- directory responsibilities
+
+Create a section:
+
+Architectural Invariants
+
+These are rules that should rarely change.
+
+==================================================
+9. DATA_MODEL.md
+==================================================
+
+Document the actual Firestore model.
+
+Likely/current conceptual entities may include:
+
+customers
+activities
+followUps
+messageTemplates
+
+Future entities may include:
+
+products
+purchases
+subscriptions
+payments
+renewals
+
+Do NOT claim future collections exist if they do not.
+
+For every implemented collection document:
+
+- purpose
+- fields
+- types
+- required fields
+- optional fields
+- relationships
+- indexes
+- timestamps
+- ownership/security
+- fictional example record
+
+Document phone normalization carefully.
+
+Example:
+
+01712345678
+8801712345678
++8801712345678
+
+becomes:
+
++8801712345678
+
+Document which normalized value is used for duplicate detection.
+
+==================================================
+10. CUSTOMER_JOURNEY.md
+==================================================
+
+This document defines the business/customer state machine.
+
+Potential statuses include:
+
+not_contacted
+contacted
+replied
+interested
+customer
+follow_up
+no_response
+not_interested
+inactive
+do_not_contact
+
+Document what each implemented status means.
+
+Document valid/expected transitions.
+
+Keep EVENTS separate from STATES.
+
+For example:
+
+whatsapp_opened
+
+is an event.
+
+It does NOT automatically mean:
+
+contacted
+
+Similarly:
+
+message_marked_sent
+
+is different from:
+
+whatsapp_opened
+
+Preserve this distinction throughout the architecture.
+
+==================================================
+11. FIREBASE.md
+==================================================
+
+Document:
+
+- Firebase project setup
+- Firebase Authentication
+- Firestore
+- Firestore rules
+- indexes
+- configuration
+- local development
+- Firebase Hosting
+- required Firebase Console configuration
+- deployment commands if verified
+
+Never include private credentials.
+
+Clearly explain which Firebase web/client configuration values are intended for client use and which credentials/secrets must never be committed.
+
+==================================================
+12. SECURITY.md
+==================================================
+
+Document:
+
+- authentication
+- authorization
+- Firestore security rules
+- customer privacy
+- phone-number privacy
+- imports
+- exports
+- deployment risks
+- Git security
+- Firebase security
+- future multi-user concerns
+- backups
+
+Explicitly prohibit committing:
+
+- real customer TXT files
+- real customer CSV files
+- WhatsApp HTML exports
+- customer database exports
+- backups containing customer information
+- credentials
+- service-account keys
+- private environment files
+
+Review .gitignore and improve it accordingly.
+
+Do not accidentally ignore legitimate source files.
+
+==================================================
+13. DEVELOPMENT.md
+==================================================
+
+Explain:
+
+- prerequisites
+- project setup
+- local development
+- Firebase setup
+- project structure
+- coding conventions
+- development workflow
+- debugging
+- Git workflow
+- documentation workflow
+
+Only document commands that are actually valid or clearly label commands requiring configuration.
+
+==================================================
+14. TESTING.md
+==================================================
+
+Document testing strategy.
+
+Important behavior includes:
+
+- phone normalization
+- duplicate detection
+- TXT parsing
+- CSV parsing
+- WhatsApp URL generation
+- status transitions
+- activity logging
+- follow-up creation
+- authentication protection
+- Firestore security
+
+Separate:
+
+Automated Tests
+
+Manual Tests
+
+Firebase/Security Tests
+
+Create a smoke-test workflow:
+
+Import fictional contact
+→ Not Contacted
+→ Open WhatsApp
+→ activity recorded
+→ mark message sent
+→ Contacted
+→ schedule follow-up
+→ record reply
+→ Interested
+→ Customer
+→ inspect complete timeline
+
+==================================================
+15. DEPLOYMENT.md
+==================================================
+
+Document:
+
+- deployment architecture
+- Firebase configuration
+- Hosting deployment
+- Firestore rule deployment
+- index deployment
+- authentication configuration
+- pre-deployment checks
+- post-deployment verification
+- rollback considerations
+
+Never claim production deployment has been tested unless it actually has.
+
+==================================================
+16. ROADMAP.md
+==================================================
+
+Use:
+
+NOW
+NEXT
+LATER
+IDEAS
+OUT OF SCOPE
+
+Possible future functionality:
+
+- products
+- purchases
+- subscriptions
+- renewals
+- payments
+- sales analytics
+- official WhatsApp Business API integration
+- multiple staff accounts
+- roles/permissions
+- customer portal
+
+Clearly distinguish roadmap items from implemented features.
+
+==================================================
+17. CURRENT_STATE.md — SESSION MEMORY
+==================================================
+
+This is one of the most important documents.
+
+It should answer:
+
+What exists right now?
+
+What works?
+
+What is partially working?
+
+What is broken?
+
+What has not been tested?
+
+What should be done next?
+
+Use approximately:
+
+# Atlas CRM — Current State
+
+Last Updated:
+Current Milestone:
+Current Branch:
+Latest Verified Commit:
+
+## Working
+
+## Partially Working
+
+## Not Implemented
+
+## Known Problems
+
+## Technical Debt
+
+## Testing Status
+
+## What Changed Recently
+
+## Immediate Next Tasks
+
+Populate this using actual repository evidence.
+
+Do not invent progress.
+
+Future substantial development sessions should update this file.
+
+==================================================
+18. SESSION HANDOFF SYSTEM
+==================================================
+
+CURRENT_STATE.md should serve as the handoff between agents.
+
+At the end of a substantial Codex session, update:
+
+- last updated
+- milestone
+- what changed
+- what was verified
+- known problems
+- immediate next task
+
+Do NOT save:
+
+- hidden reasoning
+- chain-of-thought
+- huge conversation transcripts
+- irrelevant command logs
+
+Store durable engineering facts only.
+
+==================================================
+19. ARCHITECTURE DECISION RECORDS
+==================================================
+
+Create:
+
+docs/decisions/
+
+Use lightweight ADRs.
+
+Start with:
+
+0001-vanilla-js.md
+0002-firebase.md
+0003-whatsapp-boundary.md
+
+Use:
+
+# ADR XXXX: Title
+
+Status:
+Date:
+
+## Context
+
+## Decision
+
+## Reasons
+
+## Consequences
+
+## Alternatives Considered
+
+ADR 0001:
+
+Document the current decision to use Vanilla JavaScript rather than a frontend framework.
+
+ADR 0002:
+
+Document Firebase/Firestore as the data platform.
+
+ADR 0003:
+
+Document:
+
+Atlas manages customer workflow.
+
+WhatsApp manages communication.
+
+Atlas may open supported WhatsApp links.
+
+Atlas does not manipulate WhatsApp Web.
+
+These ADRs document the current architectural direction. Do not pretend they historically existed if they did not.
+
+==================================================
+20. CHANGELOG.md
+==================================================
+
+Do not invent historical changes.
+
+Use Git history where reliable.
+
+Otherwise begin with:
+
+## Unreleased
+
+and maintain meaningful project changes going forward.
+
+==================================================
+21. PROMPTS SYSTEM
+==================================================
+
+Create:
+
+prompts/README.md
+
+Explain that prompts are temporary task instructions.
+
+They are NOT the permanent source of architectural truth.
+
+Permanent knowledge belongs in:
+
+AGENTS.md
+docs/
+ADRs
+CURRENT_STATE.md
+
+Recommend that future Codex prompts begin with:
+
+"Read AGENTS.md, docs/PROJECT.md, docs/CURRENT_STATE.md and the documentation relevant to this task before making changes.
+
+Inspect the actual implementation.
+
+Do not assume this prompt accurately represents the current repository state.
+
+After completing the task, update CURRENT_STATE.md and any authoritative documentation materially affected by the changes."
+
+Also establish a naming convention for prompts.
+
+Example:
+
+prompts/
+  01_project_memory_architecture.txt
+  02_customer_import.txt
+  03_customer_journey.txt
+  04_subscription_tracking.txt
+
+Do not require old prompts to be read every session.
+
+AGENTS.md and docs are the persistent memory.
+
+==================================================
+22. README.md
+==================================================
+
+Review and improve the root README.
+
+README should provide a human-friendly introduction:
+
+- Atlas CRM
+- purpose
+- current status
+- technology
+- primary workflow
+- quick start
+- documentation links
+- privacy warning
+
+Do not duplicate the entire architecture documentation inside README.
+
+==================================================
+23. SOURCE-OF-TRUTH HIERARCHY
+==================================================
+
+Document this principle:
+
+1. Actual running code/configuration
+2. AGENTS.md
+3. Architecture Decision Records
+4. ARCHITECTURE.md
+5. Domain documentation
+6. CURRENT_STATE.md for current implementation status
+7. README.md
+8. historical prompts/notes
+
+If documentation conflicts with code:
+
+DO NOT automatically rewrite code to match documentation.
+
+Investigate first.
+
+==================================================
+24. DOCUMENTATION MAINTENANCE RULE
+==================================================
+
+Add to AGENTS.md:
+
+A development task is not completely finished if it materially changes:
+
+- architecture
+- database schema
+- security
+- customer journey
+- setup
+- deployment
+- project state
+
+while leaving authoritative documentation incorrect.
+
+However:
+
+Do not edit documentation simply to create activity.
+
+Only update documents affected by the change.
+
+==================================================
+25. COMMENTS VS DOCUMENTATION
+==================================================
+
+Establish:
+
+Code comments:
+local implementation reasoning.
+
+docs/:
+system-level knowledge.
+
+ADRs:
+significant architectural decisions.
+
+CURRENT_STATE.md:
+current implementation/session state.
+
+AGENTS.md:
+operating instructions for coding agents.
+
+README:
+human project introduction.
+
+Prompts:
+task instructions.
+
+Avoid duplicating the same long explanations across documents.
+
+==================================================
+26. VERIFY EVERYTHING
+==================================================
+
+After creating the knowledge system:
+
+Reinspect the project.
+
+Verify:
+
+- documented paths exist
+- filenames are correct
+- module names are correct
+- Firebase collection names are correct
+- implemented features are described as implemented
+- planned features are described as planned
+- security documentation matches actual rules
+- Markdown links work
+- README links work
+- .gitignore protects customer data
+- .gitignore protects secrets
+- no real WhatsApp/customer dataset is staged
+- no credentials are staged
+
+Inspect:
+
+git diff
+
+and:
+
+git status
+
+before finishing.
+
+==================================================
+27. DO NOT OVER-DOCUMENT
+==================================================
+
+The objective is useful project memory, not documentation volume.
+
+Keep responsibilities clear:
+
+AGENTS.md
+→ agent operating manual
+
+PROJECT.md
+→ product truth
+
+ARCHITECTURE.md
+→ technical architecture
+
+DATA_MODEL.md
+→ persistent data truth
+
+CUSTOMER_JOURNEY.md
+→ business state-machine truth
+
+CURRENT_STATE.md
+→ current implementation truth
+
+ADRs
+→ architectural decision history
+
+ROADMAP.md
+→ future direction
+
+README.md
+→ human introduction
+
+==================================================
+28. FINAL REQUIREMENT
+==================================================
+
+Imagine that six months from now a completely new Codex session receives only this repository and this instruction:
+
+"Continue developing Atlas CRM."
+
+That agent should be able to understand:
+
+- what Atlas CRM is
+- why it exists
+- technology choices
+- architecture
+- data model
+- security boundaries
+- WhatsApp boundary
+- customer journey
+- what currently works
+- what does not work
+- what was decided previously
+- what should happen next
+
+without needing access to previous ChatGPT conversations.
+
+That is the success criterion for this task.
+
+==================================================
+29. FINAL REPORT
+==================================================
+
+When finished, report:
+
+- documents created
+- documents updated
+- architecture discovered
+- current state discovered
+- ADRs created
+- security/privacy problems found
+- .gitignore changes
+- documentation/code inconsistencies found
+- inconsistencies fixed
+- items that could not be verified
+- git status
+- recommended next task
+
+Do NOT implement unrelated product features during this task.
+
+Do NOT claim something was verified unless you actually verified it.
+
+Start by inspecting the repository.

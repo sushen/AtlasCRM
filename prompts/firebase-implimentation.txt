@@ -1,0 +1,304 @@
+You are working directly inside my existing AtlasCRM project:
+
+C:\Users\user\PycharmProjects\AtlasCRM
+
+Your task is to diagnose, fix, test, and deploy the application. Do not just explain the problem. Inspect the actual project files, identify the root cause, make the necessary changes, validate them, and leave the application working.
+
+CURRENT FIREBASE SETUP
+
+Firebase project:
+atlascrm-c5722
+
+Live Hosting URL:
+https://atlascrm-c5722.web.app
+
+Already completed:
+- Firebase CLI configured
+- Firebase project connected
+- Firestore database created
+- Firestore rules deployed successfully
+- Firestore indexes deployed successfully
+- Firebase Hosting deployed successfully
+- Email/Password Authentication enabled
+- Google Authentication enabled
+- At least one Firebase Authentication user exists
+- Real Firebase Web configuration has already been added to js/firebase.js
+
+IMPORTANT:
+Do NOT replace the real Firebase configuration with:
+YOUR_API_KEY
+YOUR_PROJECT
+or any placeholder configuration.
+
+CURRENT BUG
+
+Opening:
+
+https://atlascrm-c5722.web.app
+
+shows:
+
+"Loading Atlas CRM..."
+
+and remains there indefinitely.
+
+It does NOT redirect to login.html.
+It does NOT show the login interface.
+It does NOT render the CRM dashboard.
+
+EXPECTED STARTUP FLOW
+
+index.html
+→ js/app.js
+→ load all imported ES modules
+→ initialize Firebase
+→ initialize Firebase Authentication
+→ onAuthStateChanged()
+→ if unauthenticated: redirect to login.html
+→ if authenticated: render Atlas CRM
+
+KNOWN CODE STRUCTURE
+
+index.html loads:
+
+js/app.js
+
+app.js imports modules including:
+
+./firebase.js
+./services/store.js
+./services/imports.js
+./utils/dates.js
+./utils/whatsapp.js
+
+store.js additionally imports:
+
+../firebase.js
+../utils/phone.js
+
+Therefore, inspect the ENTIRE ES-module dependency graph.
+
+A broken import/export, missing file, incorrect filename/case, syntax error, Firebase error, or runtime exception anywhere in this dependency chain could prevent app.js from reaching start() and leave the page permanently displaying "Loading Atlas CRM...".
+
+TASK 1 — INSPECT BEFORE EDITING
+
+First inspect:
+
+git status
+
+Then inspect the complete project structure.
+
+Do not reset, clean, delete, revert, or overwrite unrelated user work.
+
+Do not use destructive Git commands.
+
+Inspect at minimum:
+
+index.html
+login.html
+js/app.js
+js/firebase.js
+js/services/store.js
+js/services/imports.js
+js/utils/phone.js
+js/utils/dates.js
+js/utils/whatsapp.js
+and every other JS module imported directly or indirectly.
+
+Also inspect:
+
+firebase.json
+.firebaserc
+firestore.rules
+firestore.indexes.json
+
+TASK 2 — FIND THE ROOT CAUSE
+
+Check specifically for:
+
+- missing JavaScript files
+- incorrect relative import paths
+- filename case mismatches
+- syntax errors
+- ES-module loading errors
+- imports of exports that do not exist
+- duplicate/stale firebase files
+- Firebase SDK import problems
+- Firebase initialization errors
+- Authentication initialization errors
+- onAuthStateChanged() never executing
+- login redirect loops
+- login.html JavaScript errors
+- Firestore initialization problems
+- Firestore permission errors
+- incorrect Firebase project configuration
+- Hosting serving stale or incorrect files
+- Windows case-insensitivity hiding problems that fail on Hosting
+- unhandled Promise errors
+- exceptions occurring during module evaluation
+- errors in store.js
+- errors in utils/phone.js
+- errors in imports.js
+- errors in dates.js
+- errors in whatsapp.js
+
+Pay special attention to:
+
+js/services/store.js imports:
+
+import { normalizePhone } from '../utils/phone.js';
+
+Confirm that file exists and actually exports normalizePhone.
+
+Also verify every export requested by app.js actually exists in store.js.
+
+Do not assume Firebase itself is the problem.
+
+TASK 3 — FIX THE APPLICATION
+
+Fix every confirmed blocker you find.
+
+Preserve the existing Atlas CRM architecture and UI.
+
+Do NOT redesign the application unless necessary to correct an actual defect.
+
+Preserve functionality including:
+
+- Firebase Authentication
+- Firestore
+- contacts/leads
+- customer journey/statuses
+- WhatsApp click-to-chat workflow
+- manual message/outcome tracking
+- follow-ups
+- imports
+- products
+- purchases
+- subscriptions
+- renewals
+- message templates
+- activity history
+
+Do not add automated unsolicited WhatsApp messaging.
+
+TASK 4 — IMPROVE STARTUP FAILURE HANDLING
+
+Currently a startup/module failure can apparently leave the user staring at:
+
+"Loading Atlas CRM..."
+
+Improve startup error handling where reasonably possible.
+
+If initialization fails, the application should provide a useful visible error and console diagnostic instead of silently remaining on the loading screen forever.
+
+Do not expose passwords or sensitive credentials in error messages.
+
+TASK 5 — AUTHENTICATION VALIDATION
+
+Verify:
+
+1. Firebase initializes.
+2. Authentication initializes.
+3. An unauthenticated visitor is redirected to login.html.
+4. login.html loads correctly.
+5. Email/password login works with an existing Firebase Auth user.
+6. Successful authentication redirects to/opens the CRM.
+7. Logout works.
+8. Logged-out users cannot simply use the private CRM.
+
+Do NOT ask me for my Firebase password.
+
+If a validation step requires my credentials, validate everything possible without them and clearly identify that single manual test for me.
+
+TASK 6 — FIRESTORE VALIDATION
+
+Verify:
+
+- firestore.rules compile
+- firestore.indexes.json is valid
+- authenticated CRM operations are compatible with the rules
+- required queries match available indexes
+- Firestore reads/writes used by the application are structurally correct
+
+Do not weaken Firestore security merely to make the app work.
+
+This CRM contains private customer information.
+
+TASK 7 — LOCAL VALIDATION
+
+Use available CLI tools to test the application before deployment.
+
+If useful, run Firebase Hosting locally/emulators or another appropriate local HTTP server.
+
+Validate the module dependency tree.
+
+Check browser-loadable paths and HTTP responses.
+
+Test as much of the startup sequence as possible.
+
+Do not declare the issue fixed merely because JavaScript syntax checks pass.
+
+TASK 8 — DEPLOY
+
+After the fixes have been validated, deploy the corrected application to the EXISTING Firebase project:
+
+atlascrm-c5722
+
+Do NOT create another Firebase project.
+
+Deploy only components that need deployment.
+
+At minimum, deploy Hosting if application files changed.
+
+If Firestore rules/indexes change, validate them before deploying them.
+
+TASK 9 — VERIFY PRODUCTION
+
+After deployment, verify:
+
+https://atlascrm-c5722.web.app
+
+Check that production is serving the new files.
+
+Verify that the old endless:
+
+"Loading Atlas CRM..."
+
+behavior is gone.
+
+TASK 10 — FINAL REPORT
+
+When everything possible is complete, give me a concise report containing:
+
+ROOT CAUSE:
+What actually caused the loading problem.
+
+FILES CHANGED:
+Exact files modified.
+
+FIXES:
+Exact changes made.
+
+VALIDATION:
+Tests/checks performed and their results.
+
+DEPLOYMENT:
+Whether Firebase deployment succeeded.
+
+LIVE URL:
+https://atlascrm-c5722.web.app
+
+MANUAL ACTION:
+Only list something here if I genuinely still need to do it.
+
+IMPORTANT OPERATING INSTRUCTION:
+
+Take ownership of the debugging process.
+
+Do not repeatedly stop and ask me which file to inspect next.
+
+You have access to the project directory, so inspect the necessary files yourself.
+
+Do not merely give me commands that I must execute unless a step genuinely requires my interaction.
+
+Diagnose → fix → validate → deploy → report.

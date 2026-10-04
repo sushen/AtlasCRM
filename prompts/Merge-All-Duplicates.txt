@@ -1,0 +1,132 @@
+Fix the **Manage Duplicates → Merge All Duplicates** workflow in Atlas CRM.
+
+## Current bug
+
+When I click **Merge All Duplicates**, it processes only some duplicate groups and then stops.
+
+For example:
+
+- Initial scan: 507 duplicate groups / 1,544 duplicate customer documents
+- After running Merge All: 483 groups / 1,470 duplicate documents remained
+- I currently have to click **Merge All** repeatedly to continue processing.
+
+This is incorrect.
+
+## Required behavior
+
+One click on **Merge All Duplicates** must start **one complete merge operation** that continues until every duplicate group included in that run has been processed, unless a genuine unrecoverable error occurs.
+
+Do NOT require the user to repeatedly click Merge All.
+
+### Performance
+
+Inspect the existing implementation, especially:
+
+- `scanDuplicates()`
+- `mergeDuplicateGroup()`
+- `mergeAllDuplicates()`
+- the Manage Duplicates UI
+
+The current implementation appears to repeatedly rescan/read customer data while processing individual groups.
+
+Refactor this so that:
+
+1. Scan duplicates once at the beginning.
+2. Keep that duplicate-group snapshot for the current operation.
+3. Process those groups sequentially or in safe controlled batches.
+4. Do not rescan the entire customer collection for every duplicate group.
+5. Respect Firestore batch/write limits.
+6. Continue automatically through all batches until finished.
+7. Preserve the existing highest-information-record selection logic.
+8. Preserve/reassign related customer data correctly before deleting redundant customer documents.
+9. Do not introduce concurrent duplicate merge operations.
+
+## Progress popup
+
+When Merge All begins, show a JavaScript/UI progress popup.
+
+It should clearly tell me that merging is running and continuously update progress, for example:
+
+**Merging duplicate customers...**
+
+`24 / 483 groups completed`
+
+`74 duplicate customer records removed`
+
+If useful, also show percentage progress.
+
+The popup must remain visible while the operation is running.
+
+Disable the **Merge All** button while the operation is active so I cannot accidentally launch another merge simultaneously.
+
+Do not use hundreds of individual browser alert dialogs.
+
+## Completion popup
+
+When the entire operation finishes, show a clear confirmation popup such as:
+
+**Duplicate merge completed**
+
+- 483 duplicate groups processed
+- 1,470 redundant customer records removed
+- 483 master customer records retained
+- 0 groups failed
+
+Then automatically refresh/rescan the Manage Duplicates view so I can see the remaining duplicate count.
+
+If everything was processed successfully, the remaining count should normally be **0 duplicate groups**.
+
+## Error handling
+
+A failure in one group must not silently terminate the entire Merge All operation.
+
+Catch errors per group/batch.
+
+If appropriate, continue processing the remaining groups and track failures.
+
+At completion, report something like:
+
+`478 succeeded / 5 failed`
+
+For failed groups, log enough diagnostic information to the browser console to identify:
+
+- phone/group
+- master customer ID
+- relevant duplicate IDs
+- operation that failed
+- Firestore error/message
+
+Never report successful completion if groups actually failed.
+
+## Data safety
+
+This operation deletes customer documents, so preserve existing data-safety behavior.
+
+Before deleting redundant customer documents:
+
+- retain the highest-information master record
+- merge useful customer fields
+- reassign related activities
+- reassign follow-ups
+- reassign purchases
+- reassign subscriptions
+- preserve other existing related data expected by Atlas CRM
+
+Do not delete activities or follow-ups merely because their old customer document is being removed.
+
+## Scope
+
+Make the smallest safe change necessary.
+
+Do **not** redesign unrelated Atlas CRM functionality.
+
+Do **not** change authentication, imports, normal contact management, Firebase configuration, or unrelated UI.
+
+After implementing the fix:
+
+1. Run syntax checks on all modified JavaScript.
+2. Review the merge logic for accidental data loss.
+3. Verify that a single Merge All action automatically proceeds through the complete duplicate snapshot.
+4. Report exactly which files were modified.
+5. Summarize the root cause of the old stop/repeat behavior.
+6. Do not deploy anything unless I explicitly tell you to deploy.

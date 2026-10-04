@@ -1,0 +1,2 @@
+export function normalizePhone(value){const raw=String(value??'').trim();if(!raw)return null;let digits=raw.replace(/[^\d+]/g,'');if(digits.startsWith('00'))digits='+'+digits.slice(2);if(digits.startsWith('+')){const d=digits.slice(1);return /^\d{8,15}$/.test(d)?'+'+d:null}const local=digits.replace(/\D/g,'');if(/^01\d{9}$/.test(local))return '+880'+local.slice(1);if(/^8801\d{9}$/.test(local))return '+'+local;return /^\d{8,15}$/.test(local)?'+'+local:null}
+export function isValidPhone(value){return Boolean(normalizePhone(value))}

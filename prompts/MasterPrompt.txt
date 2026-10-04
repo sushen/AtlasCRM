@@ -1,0 +1,651 @@
+You are building the initial infrastructure for a private web application called **Atlas CRM**.
+
+## Purpose
+
+Atlas CRM is a lightweight WhatsApp lead/customer journey tracker.
+
+I already have a dataset of WhatsApp phone numbers extracted from saved WhatsApp Business Web HTML. The saved source is from WhatsApp Web.
+
+The purpose of Atlas CRM is to take those numbers and turn each one into a persistent lead/customer record.
+
+I want to know the **journey of every WhatsApp contact**:
+
+**Imported → Not Contacted → Contacted → Replied → Interested → Customer → Renewal / Follow-up**
+
+The application should help me work through hundreds or eventually thousands of WhatsApp contacts without losing track of who I contacted and what happened.
+
+## Required Technology
+
+Keep the architecture deliberately simple.
+
+Use:
+
+- Vanilla HTML5
+- Vanilla CSS3
+- Vanilla JavaScript using ES modules
+- Firebase
+- Firebase Firestore as the database
+- Firebase Authentication for private access
+- Firebase Hosting if appropriate
+
+Do NOT introduce:
+
+- React
+- Vue
+- Angular
+- TypeScript
+- Node backend
+- Express
+- Supabase
+- unnecessary frameworks
+
+unless there is a genuine technical requirement.
+
+## Important Architecture Principle
+
+Atlas CRM does NOT control WhatsApp.
+
+Do not scrape or modify WhatsApp Web.
+
+Do not claim to know whether a WhatsApp message was actually sent, delivered, read, or replied to unless that information is manually recorded or later supplied by an official integration.
+
+Atlas should manage the **business journey around the conversation**.
+
+For each customer, provide an action that opens:
+
+https://wa.me/<normalized-number>
+
+Optionally allow a message to be prefilled.
+
+Opening WhatsApp should create an activity such as:
+
+`whatsapp_opened`
+
+It must NOT automatically mark the message as successfully sent.
+
+I should manually be able to mark:
+
+- Message Sent
+- Replied
+- No Response
+- Interested
+- Not Interested
+- Customer
+- Follow Up
+- Do Not Contact
+
+## Customer Data Model
+
+Create a Firestore `customers` collection.
+
+Each customer should support approximately:
+
+```javascript
+{
+  id: "",
+  name: "",
+  phone: "",
+  normalizedPhone: "",
+  whatsappNumber: "",
+
+  source: "",
+  sourceGroup: "",
+
+  status: "not_contacted",
+
+  tags: [],
+
+  notes: "",
+
+  importedAt: null,
+  firstContactedAt: null,
+  lastContactedAt: null,
+  lastReplyAt: null,
+  nextFollowUpAt: null,
+
+  contactAttempts: 0,
+
+  createdAt: null,
+  updatedAt: null
+}
+```
+
+Use Firebase server timestamps where appropriate.
+
+`normalizedPhone` should be suitable for duplicate detection and WhatsApp links.
+
+## Journey Statuses
+
+Create a clear customer journey.
+
+Initial statuses:
+
+```text
+not_contacted
+contacted
+replied
+interested
+customer
+follow_up
+not_interested
+no_response
+inactive
+do_not_contact
+```
+
+Make statuses easy to extend later.
+
+Display them visually using badges.
+
+## Activity History
+
+This is extremely important.
+
+Create an `activities` collection or an appropriate customer subcollection.
+
+Every important customer event should be preserved.
+
+Example:
+
+```javascript
+{
+  customerId: "...",
+  type: "status_changed",
+  fromStatus: "contacted",
+  toStatus: "replied",
+  note: "",
+  createdAt: null
+}
+```
+
+Activity types can include:
+
+```text
+imported
+whatsapp_opened
+message_marked_sent
+status_changed
+reply_recorded
+note_added
+follow_up_created
+follow_up_completed
+purchase_added
+subscription_added
+subscription_renewed
+```
+
+The customer profile should display these chronologically as a timeline.
+
+The history should allow me to understand exactly what happened with that contact.
+
+## Import System
+
+Build an import interface for my existing WhatsApp-number dataset.
+
+Support:
+
+### TXT
+
+One phone number per line.
+
+### CSV
+
+Potential fields:
+
+```text
+name
+phone
+whatsapp
+source
+source_group
+notes
+```
+
+Before importing:
+
+1. parse the file
+2. normalize numbers
+3. validate numbers
+4. detect duplicates
+5. show an import preview
+
+Then show:
+
+```text
+Total rows
+Valid
+Invalid
+Duplicates
+New contacts
+```
+
+Only import after confirmation.
+
+Do not silently overwrite existing customer information.
+
+## Phone Normalization
+
+Bangladesh numbers may appear as:
+
+```text
+01712345678
+8801712345678
++8801712345678
+```
+
+Normalize these to:
+
+```text
++8801712345678
+```
+
+Also preserve valid international numbers.
+
+Store a normalized representation that can be safely used for duplicate detection.
+
+Write this functionality as reusable JavaScript.
+
+## Main Interface
+
+Create a professional desktop-first CRM interface.
+
+Navigation:
+
+```text
+Atlas CRM
+
+Dashboard
+Contacts
+Follow-ups
+Customers
+Imports
+Settings
+```
+
+The application should still work reasonably on mobile.
+
+## Dashboard
+
+Display real Firestore-derived counts such as:
+
+```text
+Total Contacts
+Not Contacted
+Contacted
+Replies
+Interested
+Customers
+Follow-ups Due
+No Response
+```
+
+Also provide quick queues:
+
+```text
+Needs Contact
+Follow Up Today
+Overdue Follow-ups
+Recently Contacted
+Recently Replied
+```
+
+Do not create fake analytics.
+
+## Contacts Screen
+
+This is the primary working screen.
+
+Create:
+
+- search
+- status filter
+- source filter
+- tag filter
+- pagination or efficient incremental loading
+
+Suggested columns:
+
+```text
+Name / Number
+Status
+Source
+Last Contact
+Next Follow-up
+Attempts
+Actions
+```
+
+If no name exists, prominently display the phone number.
+
+Actions should include:
+
+```text
+Open WhatsApp
+View
+Mark Sent
+Set Status
+Follow Up
+```
+
+## Search
+
+Search should support:
+
+- customer name
+- phone
+- normalized phone
+- WhatsApp number
+
+Design this so it remains usable when the database becomes much larger.
+
+## Customer Profile
+
+Each contact gets a full profile.
+
+Display:
+
+```text
+Name
+WhatsApp Number
+Source
+Source Group
+Status
+Tags
+Notes
+First Contact
+Last Contact
+Contact Attempts
+Next Follow-up
+```
+
+Actions:
+
+```text
+Open WhatsApp
+Mark Message Sent
+Mark Replied
+Mark Interested
+Mark Customer
+No Response
+Not Interested
+Schedule Follow-up
+Add Note
+Do Not Contact
+```
+
+Below this, show the complete **Journey Timeline**.
+
+For example:
+
+```text
+Oct 4 — Imported
+Oct 4 — WhatsApp opened
+Oct 4 — Message marked sent
+Oct 5 — No response
+Oct 8 — Follow-up opened
+Oct 8 — Reply recorded
+Oct 8 — Status changed to Interested
+Oct 9 — Became Customer
+```
+
+## WhatsApp Message Templates
+
+Create a simple template system.
+
+Example templates:
+
+```text
+Initial Outreach
+Follow-up
+Product Information
+Payment Reminder
+Subscription Renewal
+Thank You
+```
+
+Support variables such as:
+
+```text
+{{name}}
+{{product}}
+{{price}}
+{{expiry_date}}
+```
+
+When I click **Open WhatsApp**, allow me to choose a template or write a custom message.
+
+Generate the correct WhatsApp click-to-chat URL and open it in a new tab/window.
+
+## Follow-ups
+
+Allow a follow-up to have:
+
+```javascript
+{
+  customerId: "",
+  dueAt: null,
+  status: "pending",
+  note: "",
+  createdAt: null,
+  completedAt: null
+}
+```
+
+Dashboard should make overdue and today's follow-ups obvious.
+
+## Sales Foundation
+
+Do not build an enormous accounting system yet.
+
+However, design the Firestore structure so Atlas can later support:
+
+```text
+products
+purchases
+subscriptions
+payments
+renewals
+```
+
+A contact can eventually become a customer and have multiple purchases/subscriptions.
+
+The initial MVP should concentrate on the contact journey.
+
+## Firebase Authentication
+
+Atlas CRM is private.
+
+Implement Firebase Authentication.
+
+Unauthenticated users must not be able to access CRM data.
+
+Create proper Firestore security rules.
+
+Do NOT simply use:
+
+```text
+allow read, write: if true;
+```
+
+## Privacy
+
+Never commit the real WhatsApp customer dataset to GitHub.
+
+Never place real customer numbers inside:
+
+```text
+source files
+public JSON
+sample data
+README
+Git history
+```
+
+The real contacts belong only in Firestore after import.
+
+Provide fictional development data if needed.
+
+## Suggested Project Structure
+
+Keep it understandable.
+
+Something similar to:
+
+```text
+atlas-crm/
+│
+├── index.html
+├── login.html
+│
+├── css/
+│   ├── variables.css
+│   ├── base.css
+│   ├── layout.css
+│   └── components.css
+│
+├── js/
+│   ├── app.js
+│   ├── firebase.js
+│   ├── auth.js
+│   │
+│   ├── services/
+│   │   ├── customers.js
+│   │   ├── activities.js
+│   │   ├── followups.js
+│   │   └── imports.js
+│   │
+│   ├── utils/
+│   │   ├── phone.js
+│   │   ├── dates.js
+│   │   └── whatsapp.js
+│   │
+│   └── views/
+│       ├── dashboard.js
+│       ├── contacts.js
+│       ├── customer.js
+│       └── import.js
+│
+├── firestore.rules
+├── firestore.indexes.json
+├── firebase.json
+├── .gitignore
+└── README.md
+```
+
+You may improve this structure if there is a clear reason, but keep the project framework-free.
+
+## UX Principle
+
+The application should answer these questions immediately:
+
+**Who have I not contacted?**
+
+**Who did I contact?**
+
+**Who replied?**
+
+**Who is interested?**
+
+**Who needs another message?**
+
+**Who became a customer?**
+
+**What happened previously with this person?**
+
+The system should make working through a large WhatsApp contact list fast.
+
+## GitHub
+
+Initialize Git if necessary.
+
+Do NOT commit:
+
+- Firebase private credentials
+- real customer data
+- exported WhatsApp HTML
+- TXT contact lists
+- CSV contact lists
+- environment secrets
+
+Create a professional README.
+
+Use sensible commits.
+
+Prepare the project so I can push it to GitHub.
+
+## Testing
+
+At minimum verify:
+
+- Bangladesh phone normalization
+- international-number preservation
+- duplicate detection
+- TXT parsing
+- CSV parsing
+- WhatsApp URL generation
+- status transitions
+- activity creation
+- follow-up creation
+- authentication protection
+
+Manually test the primary workflow:
+
+```text
+Import number
+→ Number appears as Not Contacted
+→ Open WhatsApp
+→ Mark message sent
+→ Contact becomes Contacted
+→ Add follow-up
+→ Mark reply
+→ Mark Interested
+→ Mark Customer
+→ inspect full timeline
+```
+
+## First Development Goal
+
+Do NOT attempt to build every imaginable CRM feature.
+
+Build a solid **Atlas CRM foundation** around:
+
+**WhatsApp Number → Contact → Conversation Journey → Follow-up → Customer**
+
+Once this foundation is reliable, purchases, subscriptions, renewals, revenue reporting and other sales features can be added incrementally.
+
+## Completion Requirements
+
+Do not stop after generating empty files.
+
+Actually implement a usable MVP.
+
+Before finishing:
+
+1. inspect the complete project
+2. test the main workflow
+3. check browser console errors
+4. verify Firebase integration structure
+5. verify security rules
+6. verify responsive layout
+7. verify imports
+8. verify WhatsApp links
+9. verify activity history
+10. review for obvious bugs
+
+Then report:
+
+- what you built
+- project structure
+- Firebase collections
+- Firestore indexes/rules
+- completed features
+- tests performed
+- remaining limitations
+- Firebase configuration I need to supply
+- exact commands needed to run locally
+- exact commands needed to deploy
+- Git status
+
+Do not claim anything was tested or working unless you actually verified it.
+
+Start by inspecting the current directory and then build the Atlas CRM MVP.
