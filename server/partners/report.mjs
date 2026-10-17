@@ -29,7 +29,7 @@ export async function partnerReport(storage,{partnerId,campaignId='',from,to,now
     commissionMinor:period.reduce((n,x)=>n+x.minor,0),currency:'BDT',paidMinor:paid,dueMinor:Math.max(0,net-paid),reservedMinor:reserved,debtMinor:Math.max(0,paid-net),
     ledger:period.map(({id,orderId,minor,type,at,campaignId})=>({id,orderId,minor,type,at,campaignId})),orderStates:orders,budgetAlerts,
     payouts:payouts.map(({id,minor,status,at,settledAt})=>({id,minor,status,at,settledAt})),
-    campaigns:(await all('campaign')).map(({id,productId,active})=>({id,productId,active})),
+    campaigns:(await all('campaign')).map(({id,productId,active,label,creative,hypothesis,metaAccountId,metaAdId})=>({id,productId,active,label,creative,hypothesis,metaAccountId,metaAdId})),
     budgets:budgets.map(({month,minor,currency})=>({month,minor,currency})),
     limitations:['Clicks are deduplicated first-touch visits, not independently verified people. Bots and cross-device duplicates cannot be fully detected.',
       'Period activity conversion is not a cohort rate and can exceed 100% for repeat purchases. Refunded credits are excluded from current verified sales.',

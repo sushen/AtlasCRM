@@ -8,6 +8,7 @@ import { BinanceManualPaymentProvider } from '../server/payments/binance-manual.
 import { businessReport } from '../server/business-report.mjs';
 import {PartnerProgram,PartnerError} from '../server/partners/program.mjs';
 import {partnerReport,reportCsv} from '../server/partners/report.mjs';
+import {partnerPerformance} from '../server/partners/performance.mjs';
 import {PartnerFirestore} from './partner-firestore.mjs';
 
 const reply = (data, status=200) => Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
@@ -58,6 +59,11 @@ export class AtlasCoordinator {
   }
   async handle(request) {
     const path=new URL(request.url).pathname;
+    if(path==='/partner-performance'){
+      if(this.env.PARTNER_TRACKING_ENABLED!=='true')return reply({code:'partner_tracking_disabled'},503);
+      try{return reply(await partnerPerformance(this.state.storage,{days:Number(new URL(request.url).searchParams.get('days')||7)}));}
+      catch{return reply({code:'performance_report_unavailable'},503);}
+    }
     if(path==='/partners'){
       if(this.env.PARTNER_TRACKING_ENABLED!=='true')return reply({code:'partner_tracking_disabled'},503);
       const {path:route,query,value,claims,client}=await request.json();

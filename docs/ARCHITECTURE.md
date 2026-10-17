@@ -1,5 +1,12 @@
 # Architecture
 
+## Collaborator performance loop — prepared 2026-10-17
+
+Added per-creative briefs, unique immutable Meta-ad mappings and an authenticated
+aggregate report for Genie. Payment/delivery and spend approvals remain manual.
+Worker and Hosting release are pending operator approval; see
+[COLLABORATOR_PERFORMANCE.md](COLLABORATOR_PERFORMANCE.md).
+
 ## Partner attribution and commission extension (released 2026-10-16)
 
 `server/partners/` adds transactional attribution/ledger/payout/reporting to the

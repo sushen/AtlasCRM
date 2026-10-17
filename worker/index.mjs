@@ -40,10 +40,16 @@ export default {
         const headers=new Headers(response.headers);for(const [k,v]of Object.entries(cors))headers.set(k,v);
         return new Response(response.body,{status:response.status,headers});
       }
-      if(url.pathname==='/api/admin/bot-state'||url.pathname==='/api/admin/shop-readiness'||url.pathname==='/api/admin/business-report') {
+      if(url.pathname==='/api/admin/bot-state'||url.pathname==='/api/admin/shop-readiness'||url.pathname==='/api/admin/business-report'||url.pathname==='/api/admin/partner-performance') {
         if(!['GET','POST'].includes(request.method))return json({code:'method_not_allowed'},405);
         if(!await matches(request.headers.get('authorization')?.replace(/^Bearer /,''),env.ATLAS_ADMIN_TOKEN))return json({code:'unauthorized'},401);
         if(request.headers.get('origin'))return json({code:'admin_browser_access_denied'},403);
+        if(url.pathname==='/api/admin/partner-performance'){
+          if(request.method!=='GET')return json({code:'method_not_allowed'},405);
+          const days=Number(url.searchParams.get('days')||7);
+          if(![7,30,90].includes(days)||[...url.searchParams.keys()].some(key=>key!=='days'))return json({code:'invalid_period'},400);
+          return coordinator.fetch(new Request('https://coordinator/partner-performance?days='+days));
+        }
         if(url.pathname==='/api/admin/business-report') {
           if(request.method!=='GET')return json({code:'method_not_allowed'},405);
           const days=Number(url.searchParams.get('days')||30);

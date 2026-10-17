@@ -205,3 +205,9 @@ release checks; mocked tests are not proof of a production commission payout.
 References: [Telegram deep-link limits](https://core.telegram.org/bots/features#deep-linking),
 [Firestore REST authentication](https://firebase.google.com/docs/firestore/use-rest-api),
 [Google service-account authentication](https://developers.google.com/identity/protocols/oauth2/service-account).
+
+
+## Collaborator performance extension
+
+See [COLLABORATOR_PERFORMANCE.md](COLLABORATOR_PERFORMANCE.md) for the prepared
+per-creative links, Meta-ad mappings and Genie cohort-report endpoint.

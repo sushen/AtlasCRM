@@ -1,5 +1,12 @@
 # Atlas CRM - Current State
 
+## Collaborator performance loop — prepared 2026-10-17
+
+Added per-creative briefs, unique immutable Meta-ad mappings and an authenticated
+aggregate report for Genie. Payment/delivery and spend approvals remain manual.
+Worker and Hosting release are pending operator approval; see
+[COLLABORATOR_PERFORMANCE.md](COLLABORATOR_PERFORMANCE.md).
+
 ## Admin partner UID directory — 2026-10-16
 
 Partner tracking now shows an operator-only **Partner accounts** table with name,

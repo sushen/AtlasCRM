@@ -30,7 +30,8 @@ export async function put(tx,key,value){
 export async function reconcileCommission(tx,order,now=Date.now()){
   const attribution=order.partnerAttribution;if(!attribution)return;
   await put(tx,'pt:order:'+order.id,{orderId:order.id,partnerId:attribution.partnerId,campaignId:attribution.campaignId,
-    createdAt:order.createdAt,paymentStatus:order.paymentStatus,deliveryStatus:order.deliveryStatus,at:now});
+    createdAt:order.createdAt,paymentStatus:order.paymentStatus,deliveryStatus:order.deliveryStatus,at:now,
+    clickId:attribution.clickId||null,totalAmount:order.totalAmount,currency:order.currency});
   const creditKey='pt:ledger:'+order.id+'_credit',reverseKey='pt:ledger:'+order.id+'_reverse';
   const credit=await tx.get(creditKey),reverse=await tx.get(reverseKey);
   const cancelled=['CANCELLED','REFUNDED'].includes(order.paymentStatus);
@@ -135,8 +136,20 @@ export class PartnerProgram{
         }else if(input.action==='campaign'){
           if(!valid(input.campaignId,ID)||input.productId&&!valid(input.productId,ID))fail('Invalid campaign');
           const campaignKey='pt:campaign:'+input.campaignId;if(await tx.get(campaignKey))fail('Campaign already exists');
-          await put(tx,campaignKey,{id:input.campaignId,partnerId,productId:input.productId||null,active:true,createdAt:at});
-          result={url:'https://atlascrm-c5722.web.app/?catalog=1&ref='+partnerId+'&campaign='+input.campaignId+'&utm_source=facebook&utm_medium=paid&utm_campaign='+input.campaignId+(input.productId?'&product='+input.productId:'')};
+          const metadata={};
+          for(const field of ['label','creative','hypothesis'])if(input[field]!==undefined){
+            if(typeof input[field]!=='string'||input[field].length>240)fail('Invalid campaign description');
+            metadata[field]=input[field].trim();
+          }
+          await put(tx,campaignKey,{id:input.campaignId,partnerId,productId:input.productId||null,active:true,createdAt:at,...metadata});
+          result={url:'https://atlascrm-c5722.web.app/?catalog=1&ref='+partnerId+'&campaign='+input.campaignId+'&utm_source=facebook&utm_medium=paid&utm_campaign='+input.campaignId+'&utm_content='+input.campaignId+(input.productId?'&product='+input.productId:'')};
+        }else if(input.action==='bindMetaAd'){
+          const campaignKey='pt:campaign:'+input.campaignId,campaign=await tx.get(campaignKey);
+          if(!campaign||campaign.partnerId!==partnerId||!valid(input.metaAccountId,/^[0-9]{1,30}$/)||!valid(input.metaAdId,/^[0-9]{1,30}$/))fail('Select a tracking campaign and numeric Meta account/ad IDs');
+          if(campaign.metaAdId&&(campaign.metaAdId!==input.metaAdId||campaign.metaAccountId!==input.metaAccountId))fail('Ad mapping is immutable; create a new tracking campaign for a different ad');
+          const duplicate=(await records(tx,'pt:campaign:')).some(c=>c.id!==campaign.id&&c.metaAccountId===input.metaAccountId&&c.metaAdId===input.metaAdId);
+          if(duplicate)fail('This Meta ad is already assigned to another tracking campaign');
+          await put(tx,campaignKey,{...campaign,metaAccountId:input.metaAccountId,metaAdId:input.metaAdId});
         }else if(input.action==='approveBudget'){
           if(!valid(input.month,/^\d{4}-(0[1-9]|1[0-2])$/)||!int(input.minor,partner.budgetLimitMinor))fail('Budget exceeds the monthly limit');
           await put(tx,'pt:budget:'+partnerId+'_'+input.month,{partnerId,month:input.month,minor:input.minor,currency:'USD',actor:actor.sub,at});
