@@ -1,0 +1,104 @@
+Continue from the current AtlasCRM state. Do not start over.
+
+We already created the read-only WhatsApp reconciliation checker at:
+
+.firebase/whatsapp-readonly-check.mjs
+
+The previous attempt to run it failed before accessing Firestore with:
+
+EPERM: operation not permitted, lstat 'C:\Users\user'
+
+Your task is to diagnose and safely work around/fix that execution problem, then complete the existing read-only reconciliation.
+
+IMPORTANT:
+- DO NOT send any WhatsApp message.
+- DO NOT retry any previous WhatsApp message.
+- DO NOT call the Meta send API.
+- DO NOT modify customer/message/attempt/event/activity data in Firestore.
+- DO NOT deploy anything.
+- DO NOT change Firebase rules.
+- DO NOT expose or print credentials, tokens, phone numbers, message bodies, or private Meta error text.
+- Read-only inspection only.
+
+Use the existing successful Meta test recipient already supplied/configured for this diagnostic. Do not ask me to paste secrets into source code.
+
+First determine why Node is getting:
+
+EPERM: operation not permitted, lstat 'C:\Users\user'
+
+when executing/importing the checker from the current Codex environment.
+
+If this is a Codex sandbox/path-access restriction rather than an AtlasCRM bug, do NOT make unnecessary production-code changes just to accommodate the sandbox. Find the safest way to execute the read-only inspection from an allowed location/context, or give me one exact command to run in my normal Windows/Cmder terminal if local execution is required.
+
+The reconciliation must inspect the existing Firestore evidence for the recipient and report:
+
+1. Whether a send attempt exists.
+2. Latest attempt state.
+3. Whether an accepted attempt exists.
+4. Accepted attempt timestamp.
+5. Whether an external Meta message ID is present.
+6. Whether the corresponding `messages` record exists.
+7. Whether the message external ID matches the accepted attempt.
+8. Whether the outbound message belongs to the same customer.
+9. Whether the outbound recipient matches after Atlas phone normalization.
+10. Current stored delivery status.
+11. Whether `whatsapp_message_accepted` exists in the activity timeline.
+12. Whether `whatsapp_message_status` exists after acceptance.
+13. Whether webhook status events exist.
+14. The ordered webhook status sequence, e.g. sent/delivered/read/failed, without exposing private payloads.
+15. Whether the recipient's incoming "Hi" exists.
+16. Whether that inbound message is associated with the same customer.
+17. Whether `whatsapp_message_received` exists.
+18. Whether `lastReplyAt` was updated appropriately.
+19. Whether the customer's normalized phone matches.
+20. Any inconsistency between send attempt, message, customer, activities, and webhook evidence.
+
+The existing AtlasCRM model intentionally distinguishes:
+- Meta API acceptance
+- delivery/read/failure webhook evidence
+- inbound message evidence
+- CRM business/customer state
+
+Preserve those distinctions.
+
+If webhook evidence is absent because this local outbound-only setup does not currently have a public webhook configured, explicitly say that instead of treating absence of webhook status as proof of failed delivery.
+
+At the end, give me a concise final report with:
+
+OUTBOUND
+- attempt found:
+- latest state:
+- accepted:
+- message record:
+- customer match:
+- recipient match:
+- delivery status:
+- accepted timeline event:
+
+WEBHOOK
+- status events found:
+- statuses:
+- status timeline event:
+
+INBOUND "HI"
+- found:
+- same customer:
+- received timeline event:
+- lastReplyAt updated:
+- phone match:
+
+CONSISTENCY
+- consistent / inconsistent / cannot fully verify
+- exact reason
+
+NEXT ACTION
+- what I should do next
+- whether it is safe to perform another controlled test
+
+If Codex cannot execute the Firestore read because of sandbox restrictions, stop there and provide me with the exact single command I should run from:
+
+C:\Users\user\PycharmProjects\AtlasCRM
+
+Then tell me exactly what output to paste back.
+
+Do not send anything automatically.

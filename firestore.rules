@@ -1,3 +1,32 @@
 rules_version = '2';
-service cloud.firestore { match /databases/{database}/documents { function signedIn(){ return request.auth != null; } match /customers/{id} { allow read, create, update, delete: if signedIn(); } match /activities/{id} { allow read, create, update: if signedIn(); allow delete: if false; } match /followups/{id} { allow read, create, update: if signedIn(); allow delete: if false; } match /products/{id} { allow read, write: if signedIn(); } match /purchases/{id} { allow read, write: if signedIn(); } match /subscriptions/{id} { allow read, write: if signedIn(); } match /payments/{id} { allow read, write: if signedIn(); } match /renewals/{id} { allow read, write: if signedIn(); } }
+service cloud.firestore { match /databases/{database}/documents {
+  // Market signup does not grant CRM access; only Admin can grant this claim.
+  function signedIn(){ return request.auth != null && request.auth.token.get('atlasOperator', false) == true; }
+  match /customers/{id} { allow read, create, update, delete: if signedIn(); }
+  match /activities/{id} { allow read, create, update: if signedIn(); allow delete: if false; }
+  match /followups/{id} { allow read, create, update: if signedIn(); allow delete: if false; }
+  match /products/{id} { allow read, write: if signedIn(); }
+  match /purchases/{id} { allow read, write: if signedIn(); }
+  match /subscriptions/{id} { allow read, write: if signedIn(); }
+  match /payments/{id} { allow read, write: if signedIn(); }
+  match /renewals/{id} { allow read, write: if signedIn(); }
+  match /messages/{id} {
+    allow read: if signedIn();
+    // Browser duplicate merging can re-associate history, but cannot fabricate
+    // transport events or modify message bodies/delivery evidence.
+    allow update: if signedIn()
+      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['customerId'])
+      && request.resource.data.customerId is string
+      && exists(/databases/$(database)/documents/customers/$(request.resource.data.customerId));
+    allow create, delete: if false;
+  }
+  match /whatsappEvents/{id} { allow read, write: if false; }
+  match /whatsappSendAttempts/{id} { allow read, write: if false; }
+  // Server-owned partner projections. A partner never gains CRM access.
+  match /atlasPartnerProfiles/{id} {
+    allow read: if signedIn() || (request.auth != null && resource.data.active == true && resource.data.ownerUid == request.auth.uid);
+    allow write: if false;
+  }
+  match /atlasPartnerPrivate/{id} { allow read: if signedIn(); allow write: if false; }
+ }
 }

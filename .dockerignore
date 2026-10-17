@@ -1,0 +1,16 @@
+# Only source needed by the server may enter a remote build context.
+**
+!Dockerfile
+!package.json
+!package-lock.json
+!server/
+!server/*.mjs
+!js/
+!js/**/
+!js/*.js
+!js/**/*.js
+!css/
+!css/*.css
+!index.html
+!login.html
+!404.html

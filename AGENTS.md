@@ -8,7 +8,7 @@ Primary flow: Contact -> Conversation -> Follow-up -> Customer -> Purchase -> Su
 
 ## Technology
 
-The current implementation is static HTML5, CSS3, and browser JavaScript ES modules. It uses Firebase Authentication and Firestore when configured, with a localStorage demo fallback when Firebase is not configured. Firebase Hosting is configured but has not been verified as deployed. Preserve this framework-free architecture unless explicitly instructed otherwise.
+The browser implementation is static HTML5, CSS3, and JavaScript ES modules. It uses Firebase Authentication and Firestore when configured, with a localStorage demo fallback. Static Firebase Hosting releases have been verified. An optional framework-free Node backend now supports official WhatsApp Cloud API transport using Firebase Admin; live backend deployment remains pending. Preserve the framework-free architecture unless explicitly instructed otherwise. Read `docs/WHATSAPP_SETUP.md` for transport work.
 
 ## Required reading order
 

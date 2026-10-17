@@ -2,11 +2,22 @@
 
 ## Prerequisites
 
-A modern browser and a static HTTP server are required. Firebase CLI is needed only for Firebase deployment. No package manager or build step exists in the current repository.
+A modern browser is required. The optional WhatsApp backend uses Node 20.19+ and npm (`npm ci --ignore-scripts`). Firebase CLI is needed only for Firebase deployment. Browser source remains build-free; `npm run build:hosting` stages only public assets for Hosting.
 
 ## Local setup
 
 For a safe local preview run `python -m http.server 8000` from the repository root and open `http://localhost:8000/index.html?demo=1`. Demo records are stored in localStorage. For Firebase development, configure `js/firebase.js`, enable Email/Password Authentication, create a test user, and deploy or use the configured Firestore project.
+
+Prefer `npm run preview` and `http://127.0.0.1:3000/index.html?demo=1`: this
+server exposes only browser assets, unlike a generic root directory server. For
+WhatsApp transport use `npm start` after `npm run whatsapp:check`; see
+`WHATSAPP_SETUP.md` for runtime config, private Firebase credentials and CLI testing.
+
+For the selected Windows local-send mode, run `npm run start:local`; it reuses
+the existing CLI login when ADC is absent and performs read-only readiness probes.
+Use the Firebase-hosted app's Settings → WhatsApp sending → This computer. Allow
+the browser's local-network permission if prompted. No Firebase billing upgrade
+is required for this outgoing path; leave the service running while sending.
 
 ## Conventions and workflow
 

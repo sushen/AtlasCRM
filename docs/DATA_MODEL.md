@@ -1,5 +1,71 @@
 # Data Model
 
+## Partner extension (released 2026-10-16)
+
+Existing orders add an optional immutable `partnerAttribution` snapshot containing
+partner/campaign/click references, original attribution expiry and BDT commission
+minor units. `pt:` durable records hold partners, campaigns, clicks, opaque-ticket
+hashes, keyed customer references, order-state projections, budgets, reported spend,
+credit/reversal ledger, reserved/settled/cancelled payouts and audit receipts. These
+are separate records, not a new monolithic database document. A transactional
+outbox projects server-owned `atlasPartnerProfiles` and `atlasPartnerPrivate`
+Firestore documents. Order payment adds `REFUNDED`; cancelled/refunded orders
+cannot earn commission. Existing quotes/history are preserved. See `PARTNERS.md`.
+
+## Manual payment release — 2026-10-15
+
+After the operator explicitly requested live deployment and clarified the desired
+manual reference-tracking flow, the existing atlas Worker was released with
+manual Binance instructions enabled using private payment bindings. The receiving
+QR was sent once to the configured private admin; its same-bot photo reference
+is retrievable. Bot buyer/admin command scopes were updated and verified; the
+hosted shop remains enabled and the existing webhook/SQLite namespace is preserved.
+The shop keyboard omits Wallet/API buttons. No customer balance, Binance API,
+automatic funds verification, supplier purchasing or automatic delivery exists.
+Buyers create an order, view the receiving details/QR, submit a reference, and
+wait for authorized human verification and manual delivery. The explicit 1:1
+USD/USDT quote rule follows the single 10% catalog markup. Local default remains
+disabled; the prepared deployed bindings enable production.
+
+Validation: all 104 tests passed; the 28 affected payment/shop tests passed again
+after menu simplification; local mocked workerd/SQLite payment smoke and Wrangler
+dry-run passed. Live QR retrieval, command scopes, enabled shop and existing
+webhook were checked. Secret scans passed. No real customer order/payment was
+created or approved during verification. Receiving identity is operator-supplied;
+the QR's encoded recipient was not independently verified in Binance.
+
+Telegram's published digital-goods Stars requirement was disclosed to the operator;
+this release is not a claim of platform approval/compliance. Earlier preparation
+sections below describe the pre-release state and are superseded by this release
+record where they say local-only, missing QR file reference or not deployed.
+Rollback new instructions by releasing MANUAL_CHECKOUT_ENABLED=false, preserving
+all order/evidence state; do not revert to incompatible order-schema code.
+
+## Prepared payment schema v2 (2026-10-15; local only)
+
+`ShopOrders` now defines independent `paymentStatus` and `deliveryStatus`, payable
+`unitPrice/totalAmount/currency`, immutable `paymentQuote` (receiving identity,
+conversion rule, QR reference/checksum), buyer public username when available,
+reference/evidence metadata, submitted/verified/delivered times and actor IDs,
+admin notes and audited evidence versions. Existing IDs/product retail quotes and
+legacy `status` remain compatible; old reads are projected without rewriting
+history. New indexes are `approved-payment-ref:HASH` and 30-minute
+`payment-dialog:BUYER`. Prepared local schema does not migrate live SQLite or
+Firestore data. Full requested-field mapping: `PAYMENT_ARCHITECTURE.md`.
+
+## Private Telegram shop orders (2026-10-14)
+
+Separate from Firestore/CRM, channel shop stores order records in Worker coordinator
+SQLite, or ignored local `.catalog-state/shop-orders.json` when polling. Keys are
+`order:ID`, buyer-only history indices, actor/update creation intents and hashed
+payment-reference claims. Fields include buyer Telegram ID, one-unit product quote,
+currency, stock snapshot, 24-hour quote expiry, timestamps, bounded reference and
+admin audit events/fulfillment note. States are awaiting_payment, awaiting_review,
+approved, rejected, cancelled, fulfilled. References never establish payment by
+themselves. Private bot access checks buyer ownership/admin numeric IDs. Orders
+are retained for reconciliation, without an automatic cleanup policy. No existing
+Firestore customer/activity/history record is changed. See `TELEGRAM_SHOP.md`.
+
 ## Implemented Firestore collections
 
 ### `customers`
@@ -16,13 +82,53 @@ Append-only customer timeline records: `customerId`, `type`, `note`, and `create
 
 Work items with `customerId`, `dueAt`, `status` (`pending` or `completed` in current code), `note`, `createdAt`, and `completedAt`. `dueAt` is a Firestore `Timestamp` in Firebase mode. The index orders by `dueAt`.
 
-## Reserved, not implemented
+## Other workflow collections
 
-Rules mention `products`, `purchases`, `subscriptions`, `payments`, and `renewals`, but no application code or schema currently writes them. Do not document them as available features.
+The current store also writes `products`, `purchases`, `subscriptions`, and
+`templates`. `payments` and `renewals` remain reserved in rules. Earlier claims
+that all sales collections were unimplemented did not match the existing code.
+
+## Official WhatsApp transport collections
+
+`messages` contains private inbound/outbound records keyed by SHA-256 of the
+external Meta message ID: `customerId`, `channel`, `direction`, `sender`,
+`recipient`, `body`, `messageType`, `externalMessageId`, `timestamp`,
+`deliveryStatus`, `statusTimestamp`, `metadata`, `createdAt`, `updatedAt`, and
+optional `profileName`/`errorCodes`. Status-before-send stubs may initially lack
+text, sender and customer; accepted outbound persistence completes them. Outbound
+sender is null when only the business Phone Number ID is known. Selected metadata
+keeps business IDs/display number without full webhook payloads.
+
+`whatsappEvents` contains immutable idempotency/event records keyed by a hash of
+message ID, kind, status and event timestamp, plus normalized event fields,
+`customerId` and server `receivedAt`. `whatsappSendAttempts` uses random attempt
+IDs and retains recipient/body/customer, state, server timestamps and numeric
+failure diagnostics for send reconciliation. These two collections are Admin-only.
+
+Web send attempts additionally store `actorUid` and `requestCustomerId`; their
+document IDs hash actor/request ID so identical HTTP requests are idempotent.
+An accepted repeat returns acceptance without resending; pending/uncertain
+attempts and conflicting content cannot be retried with the same request ID.
+
+The backend writes customers/messages/events/activities in transactions. Inbound
+customer creation uses deterministic `wa_<phone-hash>` IDs after looking for
+existing `normalizedPhone` records. No migration system exists; collections are
+additive and existing records are not rewritten. Creation/ingestion/update times
+use server timestamps; Meta event times are UTC ISO strings. New leads keep
+`status: new`, `customerStatus: lead`; inbound messages update `lastReplyAt` without
+overriding qualification or suppression. No separate conversation collection exists.
+
+Timeline types add `whatsapp_contact_created`, `whatsapp_message_received`,
+`whatsapp_message_accepted`, and `whatsapp_message_status`. Activities refer to a
+message through `metadata.messageId`. Browser duplicate merging moves message
+associations along with existing history. Transport bodies/statuses remain server-owned.
 
 ## Relationships and security
 
-Activities and follow-ups refer to a customer by ID. Current rules require a signed-in user for these collections but do not enforce per-user ownership; see `docs/SECURITY.md`.
+Activities and follow-ups refer to a customer by ID. Current rules require an
+authenticated user with Admin-set `atlasOperator:true`, and deny Market customers.
+Per-record ownership is not implemented; see `docs/SECURITY.md`. Google registration
+creates Firebase Auth identities, not CRM customer records.
 
 ## Fictional example
 

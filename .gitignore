@@ -1,6 +1,8 @@
 node_modules/
+prompts/private/
 .env
 .env.*
+!.env.example
 firebase-debug.log
 *.csv
 *.csv.gz
@@ -21,3 +23,11 @@ service-account*.json
 *.key
 *.p12
 .firebase/
+.catalog-state/
+.dev.vars
+.dev.vars.*
+.wrangler/
+.worker-build/
+.worker-private/
+.worker-build-audit.json
+.payment-private/

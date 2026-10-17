@@ -1,0 +1,44 @@
+{
+  "name": "atlascrm",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/whatsapp.ps1 start",
+    "preview": "node server/index.mjs --static-only",
+    "preview:catalog": "node --env-file=.env server/catalog-preview.mjs",
+    "telegram:catalog": "node --env-file=.env server/telegram-catalog-runner.mjs",
+    "telegram:check": "node --env-file=.env server/telegram-catalog-check.mjs",
+    "test:catalog": "node --test tests/catalog.test.mjs",
+    "test:worker": "node --test tests/worker.test.mjs tests/business-report.test.mjs tests/partners.test.mjs",
+    "test:partners": "node --test tests/partners.test.mjs",
+    "worker:check": "node scripts/wrangler.mjs deploy --dry-run --outdir .worker-build",
+    "worker:dev": "node scripts/wrangler.mjs dev --local",
+    "worker:deploy": "node scripts/wrangler.mjs deploy --keep-vars",
+    "worker:prepare-secrets": "node scripts/prepare-worker-secrets.mjs",
+    "telegram:webhook-status": "node --env-file=.env scripts/telegram-webhook.mjs status",
+    "telegram:webhook-register": "node --env-file=.env scripts/telegram-webhook.mjs register",
+    "shop:prepare": "node --env-file=.env scripts/prepare-channel-shop.mjs",
+    "shop:preview": "node --env-file=.env scripts/channel-shop.mjs preview",
+    "shop:publish": "node --env-file=.env scripts/channel-shop.mjs publish",
+    "payment:check": "node --env-file=.env scripts/check-manual-payment.mjs",
+    "start:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/whatsapp.ps1 local",
+    "build:hosting": "node scripts/build-hosting.mjs",
+    "whatsapp:send": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/whatsapp.ps1 send",
+    "whatsapp:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/whatsapp.ps1 check",
+    "whatsapp:diagnose": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/whatsapp.ps1 diagnose",
+    "test": "node --test tests/core.test.mjs tests/contact-actions.test.mjs tests/whatsapp.test.mjs tests/whatsapp-ui.test.mjs tests/catalog.test.mjs tests/telegram-catalog.test.mjs tests/worker.test.mjs tests/login.test.mjs tests/shop.test.mjs tests/payment.test.mjs tests/business-report.test.mjs tests/partners.test.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
+  },
+  "devDependencies": {
+    "linkedom": "^0.18.13",
+    "wrangler": "4.151.0"
+  }
+}
