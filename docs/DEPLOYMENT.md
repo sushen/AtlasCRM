@@ -1,5 +1,24 @@
 # Deployment
 
+## Collaborator performance released — 2026-10-17
+
+The operator approved the release. Existing `atlas` Worker version
+`fe7e275e-0078-410e-bd3b-aebb018ea3b6` is deployed with all 32 prior production
+bindings preserved, including enabled partner tracking. Firebase Hosting reported
+successful release of the staged 41 public files. No Firestore rules, Telegram
+webhook registration, order records, payouts or Meta campaigns were changed.
+
+The authenticated collaborator endpoint returned HTTP 200, schema version 1 and
+complete coverage with zero tracking campaigns. Genie successfully persisted this
+live empty report. Authentication, browser-origin and write boundaries returned
+401/403/405 as expected; the existing hosted bot remained enabled. The runtime
+Windsor credential is still missing in Genie, so automatic Meta cost reporting
+requires the operator to save it privately. A real operator-created collaborator,
+creative link and Meta-ad mapping are still required before measuring outcomes.
+No fictional production records were created. Verification before release: 134
+Atlas tests, 58 Genie checks, Worker dry-run and Hosting staging passed.
+
+
 ## Partner tracking released — 2026-10-16
 
 Explicit operator approval supersedes the preparation hold below. Worker version

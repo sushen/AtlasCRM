@@ -1,7 +1,8 @@
 # Collaborator tracking and the Genie feedback loop
 
-Prepared locally on 17 October 2026. Worker/Hosting release and live end-to-end
-verification are pending. Existing referral, order, commission and payment paths
+Worker and Hosting released on 17 October 2026 after operator approval. The live
+aggregate endpoint and empty Genie snapshot are verified. A real collaborator
+journey and Meta costs remain unverified until setup and private credentials are supplied. Existing referral, order, commission and payment paths
 are preserved. No collaborator, campaign, payment, payout or advertising spend is
 created automatically by this change.
 
