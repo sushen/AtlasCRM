@@ -86,9 +86,16 @@ An operator-authorized real-phone test of Meta's Hello World template was accept
 and confirmed received. It used Meta's test sender, not the real business number
 as an API sender. The existing AtlasCRM app remains unpublished and its setup page
 requires publication for production webhooks. Meshstocks exposed only test-number
-accounts; SMM Client reported no eligible WABA access for the login. A Business-app
-linking form for Meshstocks was approved and reached code verification; completion
-is still pending. The old saved Windows credential was not overwritten with the
+accounts; SMM Client reported no eligible WABA access for the login. The approved
+Meshstocks linking attempt was rejected because the real Business-app account is
+already owned by Cycle8. Read-only inspection confirmed Cycle8's Sushen Biswas asset
+and its real phone. Keep that ownership intact. Meta's official
+[Coexistence instructions](https://developers.facebook.com/documentation/business-messaging/whatsapp/embedded-signup/onboarding-business-app-users)
+require a Solution Partner or Tech Provider, a working callback and Embedded Signup.
+The AtlasCRM app's enrollment dialog states its Tech Provider classification is
+irreversible and requires business/access verification and App Review; nothing was
+submitted. A provider/onboarding choice is still required, not another unlink attempt.
+The old saved Windows credential was not overwritten with the
 browser's temporary test token. No token or real phone number belongs in this doc.
 
 ```sh

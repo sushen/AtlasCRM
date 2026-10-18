@@ -10,8 +10,14 @@ authenticated empty-feed read. No test customer was written to production. The f
 the Business-app phone still requires supported Platform onboarding and public HTTPS
 webhook setup. A fresh browser test token sent the authorized Hello World template
 from Meta's test sender to the operator's real phone, and receipt was confirmed.
-The operator approved linking that Business-app number to Meshstocks; Meta sent a
-verification code and its form is awaiting private entry. Linking is not confirmed.
+The operator approved linking that Business-app number to Meshstocks. Meta's
+verification flow reported it already belongs to Cycle8, so the move was rejected.
+Read-only inspection confirmed the real number under Cycle8's existing Sushen
+Biswas WhatsApp Business App asset. No unlink or migration is needed merely to
+inspect it. The documented Coexistence route requires a Solution Partner or Tech
+Provider; the existing AtlasCRM app is not enrolled. Its irreversible Tech Provider
+declaration was inspected but not submitted. The next decision is approved-provider
+onboarding versus pursuing the business/access verification and app-review route.
 No number was migrated, no webhook subscription changed, and no customer reply sent.
 See `WHATSAPP_LEAD_ALERTS.md`. Automatic capture is not yet live.
 
