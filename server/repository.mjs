@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { IntegrationError } from './config.mjs';
 import { textPayload } from './whatsapp.mjs';
+import { leadAlert } from './lead-alerts.mjs';
+import { normalizePhone } from '../js/utils/phone.js';
 
 const hash = value => createHash('sha256').update(value).digest('hex');
 export const messageKey = id => hash(id);
@@ -18,6 +20,48 @@ export function nextStatus(current, event) {
 // All reads precede writes so the same code works with Firestore transactions.
 export class MessageRepository {
   constructor(adapter) { this.adapter = adapter; }
+
+  async captureManualLead(value) {
+    const phone = typeof value?.phone === 'string' ? normalizePhone(value.phone) : null;
+    const interest = value?.interest ?? '', followUpAt = value?.followUpAt ?? '';
+    const due = followUpAt ? new Date(followUpAt) : null;
+    if (!phone || typeof value?.name !== 'string' || value.name.length > 100 || typeof value?.note !== 'string' || value.note.length > 1000 ||
+        typeof interest !== 'string' || interest.length > 160 || typeof followUpAt !== 'string' ||
+        (followUpAt && (!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?(?:Z|[+-]\d\d:\d\d)$/.test(followUpAt) || !Number.isFinite(due?.getTime()))) ||
+        !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value?.requestId || '') || Object.keys(value).some(key => !['name','phone','note','requestId','interest','followUpAt'].includes(key))) throw new IntegrationError('invalid_lead');
+    const key = hash('manual:' + value.requestId), payloadHash = hash(JSON.stringify([phone,value.name,value.note,interest,followUpAt]));
+    return this.adapter.transaction(async tx => {
+      const previous = await tx.get('whatsappLeadAlerts', key);
+      if (previous) {
+        if (previous.payloadHash !== payloadHash) throw new IntegrationError('lead_request_conflict');
+        return { customerId: previous.customerId, duplicate: true };
+      }
+      const customer = await tx.findCustomer(phone);
+      const id = customer?.id || `wa_${hash(phone)}`;
+      const existing = customer || await tx.get('customers', id);
+      if (followUpAt && ['do_not_contact','blocked'].includes(existing?.status)) throw new IntegrationError('recipient_suppressed');
+      if (!existing) tx.set('customers', id, { name: value.name.trim() || 'WhatsApp Lead', phone, normalizedPhone: phone, whatsappNumber: phone,
+        source: 'Manual WhatsApp enquiry', sourceGroup: 'Operator recorded', status: 'new', customerStatus: 'lead', tags: ['whatsapp-lead'],
+        notes: interest ? `Product interest: ${interest}` : '', importedAt: null, firstContactedAt: null, lastContactedAt: null, lastReplyAt: null, nextFollowUpAt: followUpAt || null,
+        contactAttempts: 0, createdAt: this.adapter.now(), updatedAt: this.adapter.now() });
+      if (existing && followUpAt) {
+        const {id: ignored, ...retained} = existing;
+        tx.set('customers', id, {...retained, nextFollowUpAt: followUpAt, updatedAt: this.adapter.now()});
+      }
+      const note = [interest ? `Product interest: ${interest}` : '', value.note,
+        'Operator recorded; message/ad origin not API-verified'].filter(Boolean).join('\n');
+      tx.set('activities', `manual_lead_${key}`, this.activity(id, 'manual_whatsapp_enquiry', note, key));
+      if (due) {
+        tx.set('followups', `manual_${key}`, {customerId:id, dueAt:this.adapter.timestamp ? this.adapter.timestamp(due) : due.toISOString(),
+          status:'pending', note: interest ? `Discuss ${interest}` : 'Follow up on WhatsApp enquiry', createdAt:this.adapter.now(), completedAt:null});
+        tx.set('activities', `manual_followup_${key}`, this.activity(id, 'follow_up_created', `Follow-up scheduled for ${followUpAt}`, key));
+      }
+      tx.set('whatsappLeadAlerts', key, { customerId: id, createdAt: this.adapter.now(), messageAt: new Date().toISOString(),
+        displayName: value.name.trim() || existing?.name || 'WhatsApp enquiry', maskedPhone: '••••' + phone.slice(-4),
+        source: 'manual', sourceId: null, newLead: !existing, payloadHash });
+      return { customerId: id, duplicate: false };
+    });
+  }
 
   async accept(event) {
     const key = messageKey(event.externalMessageId);
@@ -59,6 +103,8 @@ export class MessageRepository {
         tx.set('customers', id, { ...data, lastReplyAt: data.lastReplyAt && data.lastReplyAt > event.timestamp
           ? data.lastReplyAt : event.timestamp, updatedAt: this.adapter.now() });
         if (newCustomer) tx.set('activities', `wa_created_${key}`, this.activity(id, 'whatsapp_contact_created', 'Contact created from an incoming WhatsApp message', key));
+        // Same transaction and message-key dedup as the lead and its timeline.
+        tx.set('whatsappLeadAlerts', key, leadAlert(event, id, key, this.adapter.now(), newCustomer));
       }
       tx.set('messages', key, record);
       tx.set('whatsappEvents', eventKey, { ...event, customerId: record.customerId, receivedAt: this.adapter.now() });

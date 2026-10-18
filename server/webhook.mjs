@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { normalizePhone } from '../js/utils/phone.js';
 import { IntegrationError } from './config.mjs';
+import { referralEvidence } from './lead-alerts.mjs';
 
 const array = value => Array.isArray(value) ? value : [];
 const string = (value, max = 512) => typeof value === 'string' && value.length <= max ? value : null;
@@ -48,7 +49,8 @@ export function parseWebhook(payload, config) {
         const contact = array(value.contacts).find(c => c?.wa_id === message.from);
         events.push({ kind: 'message', channel: 'whatsapp', direction: 'inbound', externalMessageId: id,
           sender, recipient: metadata.businessNumber, timestamp: at, messageType: type, body,
-          profileName: string(contact?.profile?.name, 256), deliveryStatus: 'received', metadata });
+          profileName: string(contact?.profile?.name, 256), deliveryStatus: 'received', metadata,
+          referral: referralEvidence(message.referral) });
       }
       for (const status of array(value.statuses)) {
         const id = string(status?.id), at = timestamp(status?.timestamp);

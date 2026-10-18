@@ -33,6 +33,15 @@ Every meaningful action should append an activity. Status and event semantics mu
 
 ## Official Cloud API evidence
 
+The prepared Genie enquiry form also supports manual capture of a WhatsApp phone,
+product interest, note and optional follow-up date. It matches existing contacts,
+records an explicitly manual activity and preserves their business/suppression
+state. A new contact remains a lead; this action does not verify a reply or sale.
+Its optional pending follow-up is saved without replacing business qualification;
+suppressed contacts cannot be scheduled. The existing Atlas profile and purchase/
+subscription workflow remains the place to qualify interest and record outcomes.
+See `WHATSAPP_LEAD_ALERTS.md` for the private bridge and API-onboarding limits.
+
 The optional Node backend now records inbound messages, API acceptance and
 delivery/read/failure events separately from manual confirmations. Incoming events
 associate by normalized phone, update `lastReplyAt`, and add message text to the

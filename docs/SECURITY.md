@@ -134,6 +134,14 @@ Review Firebase Authentication providers, rules, indexes, Hosting access, backup
 
 ## Cloud API backend
 
+The new lead-alert feed/manual-capture bridge is private to native loopback clients
+with the existing admin bearer token. It rejects Origin/Sec-Fetch-Site, non-loopback
+source and wrong Host; it grants no CORS. Its masked feed omits message bodies and
+full phone numbers. `whatsappLeadAlerts` remains server-owned under the default
+Firestore client denial. Manual input is bounded, normalized, transactionally
+deduplicated and never interpreted as API-verified source, sent reply or sale.
+No new browser claims, public exposure or automatic outbound messages are enabled.
+
 Meta access/verify tokens and app secret are runtime server settings. Raw errors,
 request URLs, bodies and phone numbers are not logged. POST webhooks require the
 app secret's raw-body HMAC-SHA256 signature and the configured business/phone IDs;

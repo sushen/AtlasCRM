@@ -90,6 +90,15 @@ that all sales collections were unimplemented did not match the existing code.
 
 ## Official WhatsApp transport collections
 
+`whatsappLeadAlerts` is additive and server-owned: deterministic message/request
+key, `customerId`, server `createdAt`, message time, display name, masked phone,
+new-lead flag and referral source/ID. Manual records also retain a payload hash for
+idempotency; no message body/full phone is in the feed projection. Manual capture
+records product interest in the activity timeline and an optional deterministic
+pending followup, preserving existing qualification/suppression and purchase facts.
+Meta referral evidence on private message/event records is distinct from manual
+source claims. See `WHATSAPP_LEAD_ALERTS.md`.
+
 `messages` contains private inbound/outbound records keyed by SHA-256 of the
 external Meta message ID: `customerId`, `channel`, `direction`, `sender`,
 `recipient`, `body`, `messageType`, `externalMessageId`, `timestamp`,

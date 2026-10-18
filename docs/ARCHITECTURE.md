@@ -1,5 +1,15 @@
 # Architecture
 
+## WhatsApp lead capture and desktop alerts — prepared 2026-10-18
+
+The existing Node message repository now atomically stores a server-owned enquiry
+alert with an inbound CRM message. A private authenticated loopback feed connects
+Genie to these alerts; a separate explicit manual-capture route also records
+product interest and a follow-up without fabricating transport or purchase facts.
+`npm run leads:local` starts only this private bridge using existing Firebase access.
+No public webhook release or WhatsApp-number onboarding is complete. See
+[WhatsApp lead alerts](WHATSAPP_LEAD_ALERTS.md).
+
 ## Collaborator performance released — 2026-10-17
 
 The operator approved the release. Existing `atlas` Worker version

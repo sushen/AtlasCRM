@@ -1,5 +1,10 @@
 # WhatsApp Cloud API integration
 
+For the new private Genie enquiry feed, manual product-interest/follow-up capture
+and notification behavior, see [WhatsApp lead alerts](WHATSAPP_LEAD_ALERTS.md).
+`npm run leads:local` supports manual capture without a Meta credential; it does
+not replace the public HTTPS webhook required for automatic incoming messages.
+
 ## Architecture
 
 Atlas retains its framework-free browser app, Firebase Authentication, Firestore,

@@ -1,5 +1,20 @@
 # Atlas CRM - Current State
 
+## WhatsApp enquiries and Genie alerts — prepared 2026-10-18
+
+Added signed-message referral retention, transactional enquiry alerts, private
+loopback feed and explicit manual capture with product interest/optional follow-up.
+The local leads-only bridge passed existing Firebase read checks and Genie's
+authenticated empty-feed read. No test customer was written to production. The full
+140-test Atlas suite passes. The old saved Meta token currently returns HTTP 401;
+the Business-app phone still requires supported Platform onboarding and public HTTPS
+webhook setup. A fresh browser test token sent the authorized Hello World template
+from Meta's test sender to the operator's real phone, and receipt was confirmed.
+The operator approved linking that Business-app number to Meshstocks; Meta sent a
+verification code and its form is awaiting private entry. Linking is not confirmed.
+No number was migrated, no webhook subscription changed, and no customer reply sent.
+See `WHATSAPP_LEAD_ALERTS.md`. Automatic capture is not yet live.
+
 ## Collaborator performance released — 2026-10-17
 
 The operator approved the release. Existing `atlas` Worker version

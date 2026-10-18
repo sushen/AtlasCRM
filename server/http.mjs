@@ -6,6 +6,7 @@ import { safeFailure } from './config.mjs';
 import { IntegrationError } from './config.mjs';
 import { sendCustomerMessage } from './send.mjs';
 import { groupMenu, familyMenu, productMessage, SHOP_MENU } from './telegram-catalog.mjs';
+import { leadFeedAllowed } from './lead-alerts.mjs';
 
 const root = new URL('../', import.meta.url);
 const mime = { html: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', jpg:'image/jpeg' };
@@ -21,6 +22,27 @@ export function createAtlasServer({ config, repository, sendService, authenticat
     };
     try {
       const url = new URL(req.url, 'http://localhost');
+      if (['/api/genie/lead-alerts', '/api/genie/manual-leads'].includes(url.pathname)) {
+        if (!leadFeedAllowed(req, config?.leadAlertToken)) return json(403, { code: 'lead_feed_denied' });
+        if (url.pathname === '/api/genie/manual-leads') {
+          if (req.method !== 'POST' || url.search) return json(405, { code: 'method_not_allowed' });
+          if (!repository?.captureManualLead) return json(503, { code: 'lead_feed_unavailable' });
+          if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) return json(415, { code: 'json_required' });
+          const chunks = []; let bytes = 0;
+          for await (const chunk of req) { bytes += chunk.length; if (bytes > 8192) return json(413, { code: 'payload_too_large' }); chunks.push(chunk); }
+          let value;
+          try { value = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+          catch { return json(400, { code: 'invalid_lead' }); }
+          try { return json(200, await repository.captureManualLead(value)); }
+          catch (error) { return json(['invalid_lead','lead_request_conflict'].includes(error.code) ? 400 : 503, { code: 'lead_not_confirmed' }); }
+        }
+        if (req.method !== 'GET') return json(405, { code: 'method_not_allowed' });
+        const cursor = url.searchParams.get('cursor') || '';
+        if ((cursor && !/^[a-f0-9]{64}$/.test(cursor)) || [...url.searchParams.keys()].some(key => key !== 'cursor')) return json(400, { code: 'invalid_cursor' });
+        if (!repository?.listLeadAlerts) return json(503, { code: 'lead_feed_unavailable' });
+        try { return json(200, await repository.listLeadAlerts(cursor)); }
+        catch { return json(503, { code: 'lead_feed_unavailable' }); }
+      }
       if (['/api/catalog/products', '/api/catalog/telegram-menu'].includes(url.pathname)) {
         if (!catalogService) return json(503, { code: 'catalog_not_configured' });
         // This preview is loopback-only, with no hosted-origin/CORS bridge.

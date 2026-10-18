@@ -6,6 +6,7 @@ import { WhatsAppService } from './whatsapp.mjs';
 import { createAtlasServer } from './http.mjs';
 import { prepareLocalFirebase } from './local-firebase.mjs';
 import { workspaceOperator } from './operator.mjs';
+import { leadAlertToken } from './lead-alerts.mjs';
 
 let cleanupFirebase = () => {};
 let stage = 'saved_firebase_login';
@@ -30,7 +31,8 @@ try {
     allowed = await workspaceOperator(getAuth());
     console.log('Local sending limited to the approved Firebase workspace operator');
   }
-  const localConfig = { ...config, host: '127.0.0.1', localBridge: true, allowedUserUids: allowed };
+  const localConfig = { ...config, host: '127.0.0.1', localBridge: true, allowedUserUids: allowed,
+    leadAlertToken: await leadAlertToken() };
   const service = new WhatsAppService(localConfig);
   stage = 'meta_read_check';
   // Read-only Meta check: validates the configured token/phone/version without sending.
