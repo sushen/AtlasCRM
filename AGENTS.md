@@ -8,7 +8,7 @@ Primary flow: Contact -> Conversation -> Follow-up -> Customer -> Purchase -> Su
 
 ## Technology
 
-The current implementation is static HTML5, CSS3, and browser JavaScript ES modules. It uses Firebase Authentication and Firestore when configured, with a localStorage demo fallback when Firebase is not configured. Firebase Hosting is configured but has not been verified as deployed. Preserve this framework-free architecture unless explicitly instructed otherwise.
+The browser implementation is static HTML5, CSS3, and JavaScript ES modules. It uses Firebase Authentication and Firestore when configured, with a localStorage demo fallback. Static Firebase Hosting releases have been verified. An optional framework-free Node backend now supports official WhatsApp Cloud API transport using Firebase Admin; live backend deployment remains pending. Preserve the framework-free architecture unless explicitly instructed otherwise. Read `docs/WHATSAPP_SETUP.md` for transport work.
 
 ## Required reading order
 
@@ -49,3 +49,11 @@ If documentation conflicts with code, investigate before changing either one.
 ## Documentation maintenance
 
 A task is incomplete when it materially changes architecture, schema, security, journey behavior, setup, deployment, or project state while leaving authoritative documentation incorrect. Update only affected documents. Code comments explain local implementation reasoning; `docs/` stores system knowledge; ADRs record significant decisions; `CURRENT_STATE.md` stores durable handoff facts; prompts are temporary task instructions.
+
+## Branch review and releases
+
+The operator requires local testing, then an online feature-branch preview, then
+explicit acceptance before merging to master. Commit/push reviewed source on the
+feature branch; do not merge, enable auto-merge or deploy production merely because
+CI passes. Keep online preview data isolated from live customers and credentials.
+See `docs/CI_CD.md` for the current pipeline and preview limitations.

@@ -1,0 +1,235 @@
+Continue working inside the existing AtlasCRM repository.
+
+Current state is now confirmed by a successful read-only Firestore reconciliation.
+
+The latest WhatsApp outbound send to the verified test recipient is internally consistent:
+
+- recipientMatch: true
+- latestAttemptFound: true
+- latestAttemptState: accepted
+- acceptedAttemptFound: true
+- attemptState: accepted
+- messageRecordFound: true
+- externalMetaMessageIdPresent: true
+- deliveryStatus: accepted
+- acceptedTimelineEvent: true
+- outboundCustomerMatchesAttempt: true
+- messageExternalIdMatchesAttempt: true
+- outboundRecipientMatches: true
+
+But:
+
+- statusTimelineEvent: false
+- webhookStatusEventsFound: false
+- webhookStatuses: []
+- incomingHiFound: false
+- incomingReceivedEvent: false
+- incomingLastReplyAtUpdated: false
+
+Conclusion so far:
+Outbound sending from AtlasCRM to Meta is working and Meta accepted the request.
+Atlas also persisted the accepted message correctly.
+The missing piece is inbound/status webhook connectivity.
+
+The recipient already sent "Hi" to the WhatsApp business number, but Atlas did not receive it.
+
+Your task now is to prepare and validate a SAFE LOCAL WEBHOOK TESTING PATH for AtlasCRM.
+
+IMPORTANT SAFETY RULES:
+- Do not send another WhatsApp message yet.
+- Do not call the Meta send API.
+- Do not resend the previous accepted message.
+- Do not modify Firestore customer/message/send-attempt data unless required by legitimate webhook processing.
+- Do not expose access tokens, verify tokens, app secrets, Firebase credentials, phone numbers, or message bodies in logs.
+- Do not commit secrets.
+- Do not weaken webhook signature validation.
+- Do not disable authentication/security controls just to make testing easier.
+
+First inspect:
+- AGENTS.md
+- docs/PROJECT.md
+- docs/CURRENT_STATE.md
+- docs/ARCHITECTURE.md
+- docs/WHATSAPP_SETUP.md
+- docs/SECURITY.md
+- docs/DEPLOYMENT.md
+- server/webhook.mjs
+- server/http.mjs
+- server/local.mjs
+- server/config.mjs
+- relevant repository/firestore code
+
+Then verify the current intended architecture.
+
+The current local service runs on:
+
+http://127.0.0.1:3000
+
+The webhook endpoint should be:
+
+/webhooks/whatsapp
+
+For incoming messages and outbound sent/delivered/read/failed events, Atlas requires:
+- WHATSAPP_APP_SECRET
+- WHATSAPP_VERIFY_TOKEN
+- configured WABA / Phone Number IDs
+- a publicly reachable HTTPS callback
+- Meta subscription to whatsapp_business_account -> messages
+
+Your task is to make local webhook testing possible with the smallest safe setup.
+
+Goal architecture:
+
+Meta
+  ->
+public HTTPS tunnel
+  ->
+http://127.0.0.1:3000/webhooks/whatsapp
+  ->
+Atlas webhook verification
+  ->
+Firestore messages / whatsappEvents / activities
+
+Do NOT choose a permanent cloud deployment yet unless absolutely necessary.
+Prefer a temporary HTTPS tunnel for local verification.
+
+Tasks:
+
+1. Inspect whether the current local server already exposes GET and POST:
+   /webhooks/whatsapp
+
+2. Confirm whether webhook GET verification is implemented correctly using:
+   - hub.mode
+   - hub.verify_token
+   - hub.challenge
+
+3. Confirm POST webhook signature verification uses:
+   X-Hub-Signature-256
+   and WHATSAPP_APP_SECRET
+   against the raw request body.
+
+4. Confirm the webhook parser accepts:
+   - inbound WhatsApp messages
+   - outbound status events:
+     sent
+     delivered
+     read
+     failed
+
+5. Confirm it rejects or safely ignores:
+   - invalid signatures
+   - wrong WABA
+   - wrong phone number ID
+   - malformed payloads
+   - unsupported events
+
+6. Determine whether WHATSAPP_APP_SECRET is currently configured in the local Windows environment.
+   Report only true/false.
+   Never print the value.
+
+7. Determine whether WHATSAPP_VERIFY_TOKEN is configured.
+   Report only true/false.
+
+8. Determine whether the local service needs to be restarted after configuring WHATSAPP_APP_SECRET.
+
+9. Choose the safest temporary HTTPS tunnel option available on this Windows machine.
+   Do not install random software without explaining why.
+   Prefer an existing installed tool if available.
+   Check for common options such as:
+   - cloudflared
+   - ngrok
+   - localtunnel
+   - another already-installed tunnel tool
+
+10. If no suitable tunnel exists, recommend ONE option and give me the exact installation command, but do not install it automatically unless clearly safe and necessary.
+
+11. Once a tunnel option is identified, give me the exact command to expose:
+
+   http://127.0.0.1:3000
+
+12. From the tunnel URL, construct the exact Meta callback URL:
+
+   https://<public-host>/webhooks/whatsapp
+
+13. Tell me exactly what to configure in Meta:
+
+   Callback URL:
+   <constructed URL>
+
+   Verify token:
+   use existing WHATSAPP_VERIFY_TOKEN
+
+   Webhook object:
+   whatsapp_business_account
+
+   Field subscription:
+   messages
+
+14. Determine whether the app is already subscribed to the intended WABA.
+   If possible, verify read-only through Meta.
+   Do not change subscription automatically unless clearly necessary.
+
+15. If not subscribed, give the exact safe next action required.
+   Do not expose tokens in commands/output.
+
+16. After configuration, perform ONLY read-only/local checks first:
+   - webhook GET verification route locally if possible
+   - verify local service is running
+   - verify webhook endpoint responds
+   - verify tunnel forwards to localhost
+
+17. Do NOT send any outbound WhatsApp message as part of this setup.
+
+18. Once webhook configuration is complete, instruct me to send one inbound "Hi" from the verified recipient manually.
+
+19. Then inspect Firestore for:
+   - inbound message record
+   - whatsapp_message_received activity
+   - lastReplyAt update
+   - correct customer association
+
+20. Only after inbound webhook handling is proven should we perform ONE new controlled outbound test.
+
+21. For that outbound test, require:
+   - one message only
+   - no retry
+   - then inspect webhook statuses
+   - expected progression such as accepted -> sent -> delivered -> read, or failed with Meta numeric codes
+
+If a temporary tunnel URL changes after restart, explicitly warn me that the Meta callback URL must be updated.
+
+If the current code already supports everything and only environment/tunnel/Meta dashboard configuration is missing, do not make unnecessary code changes.
+
+If you discover a real bug, explain it first and make only the smallest safe fix.
+
+At the end, give me a concise report:
+
+LOCAL WEBHOOK
+- GET verification implemented:
+- POST signature verification implemented:
+- incoming message handling implemented:
+- status event handling implemented:
+- app secret configured:
+- verify token configured:
+- service restart required:
+
+TUNNEL
+- tool found:
+- command:
+- public HTTPS URL:
+- Meta callback URL:
+
+META
+- WABA subscription status:
+- messages field subscription status:
+- exact manual configuration needed:
+
+TEST PLAN
+1. Start local service
+2. Start tunnel
+3. Configure Meta callback
+4. Send inbound "Hi"
+5. Verify Firestore evidence
+6. Perform one controlled outbound test only after inbound success
+
+DO NOT send any WhatsApp message automatically.

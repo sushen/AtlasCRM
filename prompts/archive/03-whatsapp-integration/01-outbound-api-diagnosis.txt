@@ -1,0 +1,137 @@
+You are working inside the existing AtlasCRM repository.
+
+Goal:
+Diagnose and fix the current WhatsApp Cloud API outbound send failure from the hosted CRM through the local Windows service.
+
+Observed live failure:
+POST http://127.0.0.1:3000/api/whatsapp/messages
+returns:
+HTTP 502
+{"code":"meta_api_error"}
+
+Known facts:
+- The browser reaches the local service successfully.
+- CORS is working for https://atlascrm-c5722.web.app.
+- Firebase authentication is reaching the backend.
+- Settings → WhatsApp sending → This computer is connected.
+- The local service is already running on port 3000.
+- Read-only Firebase/Auth/Meta phone readiness checks previously passed.
+- A Meta dashboard Hello World / order-confirmation test to a verified test recipient succeeded.
+- The CRM send path fails only when AtlasCRM calls Meta.
+- Do not assume Firebase billing, Cloud Run, webhooks, another Meta app, or AI integration are required for this outbound-local-send issue.
+
+First, recover project context exactly as the repository requires.
+
+Read in this order:
+1. AGENTS.md
+2. docs/PROJECT.md
+3. docs/CURRENT_STATE.md
+4. docs/ARCHITECTURE.md
+5. docs/WHATSAPP_SETUP.md
+6. docs/DATA_MODEL.md
+7. docs/SECURITY.md
+8. docs/TESTING.md
+9. affected source files
+
+Also inspect:
+- git status
+- recent git log
+
+Important project constraints:
+- Preserve the framework-free architecture.
+- Do not replace the existing WhatsApp transport architecture.
+- Do not weaken authentication, Firebase rules, UID checks, CORS, Host/Origin checks, or secret handling.
+- Do not expose access tokens, Firebase ID tokens, phone numbers, customer data, Meta raw provider messages, or other secrets in source, logs, docs, terminal output, commits, or responses.
+- Do not hardcode customer data or credentials.
+- Do not automatically resend a failed message.
+- Do not send any real WhatsApp message without explicit operator approval.
+- Preserve the existing uncertain-send / idempotency protections.
+- Do not modify unrelated pre-existing working-tree changes.
+
+Now investigate the actual failure.
+
+Trace the complete path for:
+POST /api/whatsapp/messages
+
+Inspect at minimum:
+- js/services/whatsapp-api.js
+- server/local.mjs
+- server/http.mjs
+- server/auth.mjs
+- server/config.mjs
+- server/whatsapp.mjs
+- server/repository.mjs
+- server/firestore.mjs
+- any send-attempt / error-mapping code involved
+
+Find the most recent failed WhatsApp send attempt in the private
+whatsappSendAttempts data.
+
+Retrieve only the minimum diagnostics needed, especially:
+- attempt state
+- metaCode
+- metaSubcode
+- HTTP status if stored
+- whether Meta definitely rejected the request versus an uncertain/network outcome
+
+Do not print:
+- recipient phone number
+- message body
+- token values
+- Firebase ID tokens
+- raw Meta error text if the repository intentionally suppresses it
+- credentials or private identifiers
+
+Then determine the root cause.
+
+Specifically check whether the failure is caused by any of these:
+- Meta error 131030 / recipient not on the approved test-recipient list
+- recipient normalization mismatch between CRM and verified Meta test number
+- service-window restriction for free-form text
+- wrong WHATSAPP_PHONE_NUMBER_ID
+- wrong WHATSAPP_BUSINESS_ACCOUNT_ID
+- access-token permission/account mismatch
+- expired/invalid token
+- wrong Graph API version
+- malformed Meta request payload
+- wrong endpoint construction
+- send-attempt persistence or reconciliation bug
+- stale environment values in the already-running process
+
+Compare the active local process configuration against the current saved Windows User/Machine environment WITHOUT printing secret values.
+
+Important:
+The Meta test-recipient number that succeeded in Meta must match the CRM contact after Atlas normalization. Verify that relationship safely without exposing the number.
+
+If the root cause is external Meta configuration rather than a code bug:
+- do not invent a code fix
+- report the exact numeric Meta code/subcode
+- explain the precise operator action required
+- identify whether the local service must be restarted afterward
+
+If the root cause is a code/config bug inside AtlasCRM:
+- make the smallest safe fix
+- preserve current security and architecture
+- add or update focused tests for the failure
+- run the relevant test suite
+- run syntax checks
+- review git diff
+- update only materially affected documentation
+
+Do not deploy anything.
+Do not commit anything.
+Do not push anything.
+Do not send a real WhatsApp message automatically.
+
+At the end, report clearly:
+
+1. Root cause
+2. Numeric Meta code/subcode found
+3. Whether this is code, local runtime config, or Meta dashboard/account configuration
+4. Exact files changed, if any
+5. Exact operator action still required
+6. Whether the local service must be restarted
+7. Tests/checks run and results
+8. Whether it is now safe for the operator to perform ONE manual send test
+
+If you cannot determine the root cause from existing data, add a temporary safe diagnostic path that exposes only numeric Meta code/subcode and non-sensitive classification to the local operator, never secrets or raw provider payloads. Remove or keep it only if consistent with the repository's security model.

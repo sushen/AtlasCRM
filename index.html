@@ -3,14 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/jpeg" href="/images/brand/atlas-logo.jpg">
   <title>Atlas CRM</title>
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/catalog.css?v=20261014-shop-ui">
 </head>
 <body><div id="app"><main class="content"><p class="muted">Loading Atlas CRM...</p></main></div><script type="module">
-  import('./js/app.js').catch(error => {
+  const entryParams = new URLSearchParams(location.search);
+  const requestedView = entryParams.get('catalog') || (entryParams.has('ref') ? '1' : null);
+  const localPreview = requestedView === '1' ? '1' : ['127.0.0.1', 'localhost'].includes(location.hostname) ? requestedView : '';
+  const partnerView = new URLSearchParams(location.search).get('partners') === '1';
+  import(partnerView ? './js/partners.js' : localPreview === 'telegram' ? './js/telegram-preview.js' : localPreview === '1' ? './js/catalog-preview.js?v=20261016-partners' : './js/app.js?v=20261014-shop-ui').catch(error => {
     console.error('Atlas CRM startup failed while loading modules.', error);
     const message = error instanceof Error ? error.message : String(error);
     const app = document.querySelector('#app');

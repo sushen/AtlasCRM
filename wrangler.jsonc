@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Existing Worker displayed as Atlas; approved canonical script ID is atlas.
+  "name": "atlas",
+  "main": "worker/index.mjs",
+  "compatibility_date": "2025-10-01",
+  "keep_vars": true,
+  "send_metrics": false,
+  "preview_urls": false,
+  "vars": {
+    "FIREBASE_PROJECT_ID": "atlascrm-c5722",
+    "CATALOG_ALLOWED_ORIGINS": "https://atlascrm-c5722.web.app,https://atlascrm-c5722.firebaseapp.com",
+    "CATALOG_PUBLIC_ENABLED": "true",
+    "TELEGRAM_GROUP_URL": "https://t.me/atlascrmshop",
+    "TELEGRAM_BOT_ENABLED": "false",
+    "TELEGRAM_SHOP_ENABLED": "true",
+    "TELEGRAM_BOT_USERNAME": "AtlasCrmMarketBot",
+    "PARTNER_TRACKING_ENABLED": "false"
+  },
+  "durable_objects": { "bindings": [{ "name": "ATLAS_COORDINATOR", "class_name": "AtlasCoordinator" }] },
+  "migrations": [{ "tag": "atlas-market-v1", "new_sqlite_classes": ["AtlasCoordinator"] }]
+}
