@@ -1,5 +1,23 @@
 # Security and Privacy
 
+## Customer-delivery account projection (local development, 2026-10-19)
+
+deliveryDetails is operator-authorized and audited, decrypts only on the server,
+and projects structured email/password fields. It never returns 2FA seeds, recovery
+codes or other credential fields to the default delivery UI. The view clears
+after 30 seconds/visibility change. The existing separate raw admin reveal API
+remains privileged and is not called by that UI. No customer delivery transport,
+external login, auto-renewal or automatic access revocation is enabled.
+
+## Local journey workspace (development, 2026-10-19)
+
+The journey view reads existing operator-authorized Firebase collections and never
+rewrites qualification, payment, delivery or suppression based on opening a screen.
+Customer history/text is escaped. Its reply action reuses the official authenticated
+sending adapter and customer ID; unknown outcomes are locked without automatic
+retries. The generated local review build still disables that adapter entirely.
+No Meta onboarding, external message, autonomous reply or reminder was activated.
+
 ## Explicit Telegram product publication (released 2026-10-19)
 
 Only TELEGRAM_OWN_PRODUCT_IDS-approved product IDs can enter the real bot's catalog;

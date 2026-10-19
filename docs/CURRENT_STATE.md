@@ -1,5 +1,109 @@
 # Atlas CRM - Current State
 
+## CRM publication authorized — 2026-10-19
+
+Operator explicitly requested source commit/push and release of the reviewed CRM
+to Firebase Hosting, with its required operator-only shared-Firestore inventory
+backend. Pre-release checks: all 227 tests, Worker build, inventory and checkout
+runtime smoke tests and public secret scans passed. Existing bot behavior/settings
+and live records must be preserved; NAM and WhatsApp automation remain off. Source
+stays on the current feature branch, without merging master. Actual release
+verification/receipts will be recorded at completion.
+
+Latest dealer-intake clarification: supplier selection fills name/source/price,
+while delivered email, username, password and 2FA are entered manually in separate
+fields. Structured account entry is validated, masked for password/2FA and cleared
+after save; other license formats remain separate. Customer-delivery projection
+excludes 2FA and can include a separate username. All 28 affected supplier/inventory
+tests pass, including form submission with fictional credentials. Local assets
+rebuilt; no real additional inventory, customer message or production release made.
+
+## Owned inventory receipt form shown — 2026-10-19
+
+Owned inventory now appears above supplier offers with Add purchased inventory.
+That action focuses supplier search; Record manual purchase opens the completed
+dealer-purchase receipt. Reusable account adds account label, supplier years,
+warranty hours and optional short-offer fulfillment links; the source product
+is included automatically. No source purchase/payment is initiated. Both existing
+accounts are visible at USD 3.28 cost each; no third account was saved while
+demonstrating the form. The chat browser visibility control was explicitly enabled
+after app screen context showed the panel closed; screen context then confirmed
+the right browser panel open/focused with the receipt form retained. All 226 tests
+pass. Latest local source changes remain uncommitted and not production deployed.
+
+## Short access slices on reusable accounts — 2026-10-19
+
+Latest operator clarification: the underlying K12 education account has a two-year
+supplier plan and 24-hour warranty, but customers buy independent short access
+terms and may renew onto the same owned account. Two real accounts are linked to
+the identified catalog offer, with confirmed acquisition cost USD 3.28 each
+(USD 6.56 total). Both customer purchases/account allocations are recorded.
+
+An agent initially treated the second offer's USD 4.19 catalog selling price as
+the paid amount and its supplier two-year term as the customer's expiry. Those
+assumptions were corrected with an explicit audit event and private operation
+receipt: the second paidAmount is null, paymentStatus is paid_amount_unknown,
+and expiryDate is null with expiryUnknown:true. The catalog reference price remains
+USD 4.19. The two purchases/assignments remain; confirmed paid totals are USD 1,
+not USD 5.19. Exact second customer access length and amount actually paid still
+need confirmation. Historical activities are preserved alongside the correction.
+
+Assign product is now available on the focused customer page, selecting a saved
+catalog product and matching owned account. Supplier durationYears never fills the
+customer expiry; explicit access-days selection calculates it. Actual amount paid
+must be entered deliberately. If purchase save succeeds but allocation fails, retry
+completes the same allocation without resaving a purchase. Shared accounts remain
+reusable; capacity is unspecified rather than assumed unlimited.
+
+The default account-details UI uses an operator-only deliveryDetails projection
+that returns only email/password. 2FA secrets stay in the existing private vault
+and are absent from customer delivery payloads. No external login or credential
+send was performed. Expiry is tracking only; no actual access revocation is built.
+All 225 project tests, Worker dry-run and both mocked inventory/checkout runtime
+checks pass. Local backend restarted with latest code. Actual browser verification
+shows two customer purchases and two inventory accounts at USD 3.28 each. Assign
+product successfully selected the K12 listing, either owned account, and an unsaved
+three-day draft (expiry Oct 22); the draft was discarded, not saved as a third sale.
+Browser now returns to the focused customer case. Private-value scans pass; source
+contains no real account credentials or customer number. These source changes are
+uncommitted and not released to production.
+
+## First real customer journey and owned accounts — 2026-10-19
+
+At explicit operator request, two supplied accounts were recorded in shared
+Firebase owned inventory using existing storage protection and privately verified;
+the restricted plaintext intake file was removed. These are reusable account assets
+with per-purchase access allocations and unknown capacity, not two sellable seats.
+At initial intake, acquisition costs/dates/account expiry were unrecorded. One account was
+allocated to the confirmed ChatGPT USD 1 one-day purchase starting Oct 19 and
+expiring Oct 20. One atomic CRM write recorded purchase/subscription/activities and
+qualified the existing lead as customer while preserving prior history. No message,
+external login or delivery was invented or performed. The second student purchase
+awaits its paid amount/currency and access term.
+
+Local views now show account labels/allocations and the actual recorded business
+timeline. All 36 affected inventory/journey/sales tests pass. Static local assets
+were rebuilt. Automatic approval review rejected the combined preview-process
+restart command with only “blocked by policy”. A later narrow restart, after
+verifying the exact local-preview process, succeeded; the backend now loads the
+shared-account code. Subsequent browser inspection of the normal loaded page
+succeeded: the actual customer, one recorded purchase, paid amount, start/expiry
+and Account 1 assignment are visible together in a top overview card. The misleading
+global Purchase-stage counter is hidden on a focused customer page; stage counts
+are labeled explicitly in the all-journeys view. Six focused journey tests pass.
+No production deployment, new source commit or master merge was performed.
+
+## Automation focus: local customer journey workspace — 2026-10-19
+
+Operator redirected development toward the connected customer journey rather than
+number management. Inbox & journey / ?inbox=1 now brings actual Firebase people,
+conversation activities, next actions, purchases, subscriptions and follow-ups into
+one local screen. Business state is projected from evidence and never rewritten
+by opening the view. No fabricated messages, customer writes or sends are used.
+Generated local sending stays disconnected. Live automatic capture remains blocked
+on approved WhatsApp number onboarding/public webhook; AI replies and reminder
+execution are not enabled. See JOURNEY_WORKSPACE.md and WHATSAPP_LEAD_ALERTS.md.
+
 ## Feature-branch source synchronization — 2026-10-19
 
 The operator requested GitHub synchronization after reviewing the functionality.

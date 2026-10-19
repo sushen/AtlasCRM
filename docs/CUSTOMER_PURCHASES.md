@@ -1,5 +1,24 @@
 # Customer purchase history
 
+## Local account-assignment development — 2026-10-19
+
+The focused customer journey provides Assign product. It loads the saved catalog
+products and matching owned inventory accounts. Catalog selling price is only a
+reference; actual paid amount stays empty until explicitly entered. Customer access
+days calculate an expiry independently of the underlying supplier account's years
+or warranty hours. Each renewal is a separate purchase/term and can select the same
+reusable account. Purchase and allocation have separate idempotent intents; after
+purchase success, a failed allocation retry reuses that purchase instead of creating
+another sale. No credentials are sent or external access revoked.
+
+Real case correction records may contain paidAmount:null/paymentStatus:
+paid_amount_unknown when the operator confirmed the purchase but not the amount.
+Such purchases count as product purchases but are excluded from spending totals.
+ExpiryUnknown:true with null expiry means access term not recorded, not perpetual
+or two-year customer access. The regular purchase form still requires actual paid
+amount and an explicit date/no-expiry choice. These incomplete fields are shown
+honestly until the operator confirms them; no exact amount or term is inferred.
+
 Released with operator approval on 2026-10-19 together with username-only
 Quick Add support. Release verification is recorded in CURRENT_STATE.md.
 

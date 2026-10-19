@@ -8,15 +8,15 @@ const fail=message=>{throw new InventoryError(message);};
 const requireId=(value,label)=>{if(!validId(value))fail('Invalid '+label);return value;};
 const text=(value,label,max=200)=>{if(typeof value!=='string'||!value.trim()||value.trim().length>max)fail('Enter '+label);return value.trim();};
 const publicUnit=unit=>{
-  const {id,productId,productName,source,cost,currency,acquiredAt,expiresAt,state,createdAt,updatedAt,customerId,purchaseId,assignedAt,deliveredAt,retiredAt}=unit;
-  return {id,productId,productName,source,cost,currency,acquiredAt,expiresAt,state,createdAt,updatedAt,...(customerId?{customerId,purchaseId,assignedAt}:{}),...(deliveredAt?{deliveredAt}:{}),...(retiredAt?{retiredAt}:{})};
+  const {id,productId,productName,source,cost,currency,acquiredAt,expiresAt,state,createdAt,updatedAt,customerId,purchaseId,assignedAt,deliveredAt,retiredAt,sharedAccount,enabledProductIds,allocationCount,metadataIncomplete}=unit;
+  return {id,productId,productName,label:unit.label||null,source,cost,currency,acquiredAt,expiresAt,state,createdAt,updatedAt,...(sharedAccount?{sharedAccount:true,enabledProductIds,allocationCount:allocationCount||0,metadataIncomplete,supplierTermYears:unit.supplierTermYears||null,warrantyHours:unit.warrantyHours||null}:{}),...(customerId?{customerId,purchaseId,assignedAt}:{}),...(deliveredAt?{deliveredAt}:{}),...(retiredAt?{retiredAt}:{})};
 };
 export class InventoryProgram {
   constructor(storage,{keyring,references,resolveSupplierOffer,now=Date.now,today=day,supplierReadiness={canboso:true,nam:false}}={}){this.storage=storage;this.vault=new InventoryVault(keyring);this.references=references;this.resolveSupplierOffer=resolveSupplierOffer;this.now=now;this.today=today;this.supplierReadiness=supplierReadiness;}
   authorize(claims){if(claims?.atlasOperator!==true||!claims.sub)fail('Operator access required.');}
   async list(claims,{cursor='',purchaseId=''}={}){
     this.authorize(claims);if(cursor&&!/^iv:unit:[A-Za-z0-9_-]{1,100}$/.test(cursor))fail('Invalid page cursor.');
-    if(purchaseId){requireId(purchaseId,'purchase');const linked=await this.storage.get('iv:purchase:'+purchaseId);const unit=linked?await this.storage.get('iv:unit:'+linked.unitId):null;return {units:unit?[publicUnit(unit)]:[],cursor:null};}
+    if(purchaseId){requireId(purchaseId,'purchase');const linked=await this.storage.get('iv:purchase:'+purchaseId);const unit=linked?await this.storage.get('iv:unit:'+linked.unitId):null;return {units:unit?[publicUnit(unit)]:[],allocation:linked||null,cursor:null};}
     const page=[...await this.storage.list({prefix:'iv:unit:',startAfter:cursor,limit:51})];
     const maps=[...await this.storage.list({prefix:'iv:map:',limit:101})];
     return {units:page.slice(0,50).map(([,unit])=>publicUnit(unit)),cursor:page.length>50?page[49][0]:null,mappings:maps.slice(0,100).map(([,m])=>m),mappingsTruncated:maps.length>100,suppliers:await supplierStates(this.storage,this.supplierReadiness)};
@@ -27,7 +27,7 @@ export class InventoryProgram {
     let cursor='',scanned=0;
     do{
       const page=[...await this.storage.list({prefix:'iv:unit:',startAfter:cursor,limit:500})];
-      for(const [,unit]of page){result.total++;if(unit.state==='available'&&unit.expiresAt&&unit.expiresAt<this.today())result.expired++;else if(['available','assigned','delivered','retired'].includes(unit.state))result[unit.state]++;}
+      for(const [,unit]of page){result.total++;if(unit.sharedAccount){result.sharedAccounts=(result.sharedAccounts||0)+1;result.sharedAllocations=(result.sharedAllocations||0)+(unit.allocationCount||0);continue;}if(unit.state==='available'&&unit.expiresAt&&unit.expiresAt<this.today())result.expired++;else if(['available','assigned','delivered','retired'].includes(unit.state))result[unit.state]++;}
       scanned+=page.length;cursor=page.at(-1)?.[0]||'';
       if(page.length<500)break;
       if(scanned>=10000){result.truncated=!!(await this.storage.list({prefix:'iv:unit:',startAfter:cursor,limit:1})).size;break;}
@@ -40,14 +40,20 @@ export class InventoryProgram {
     if(!input||typeof input!=='object'||Array.isArray(input))fail('Invalid inventory request.');
     const action=input.action,requestId=requireId(input.requestId,'save request');
     if(requestId.length<16)fail('Reopen the form and retry.');
-    if(!['receive','assign','deliver','retire','reveal','mapOffer','setSupplier'].includes(action))fail('Unknown inventory action.');
+    if(!['receive','assign','deliver','retire','reveal','deliveryDetails','mapOffer','setSupplier'].includes(action))fail('Unknown inventory action.');
     // HMAC receipts contain neither a credential nor a guessable plaintext digest.
     const digest=await this.vault.fingerprint(JSON.stringify(input));
-    if(action==='reveal'){
+    if(action==='reveal'||action==='deliveryDetails'){
       const unitId=requireId(input.unitId,'unit'),unit=await this.storage.get('iv:unit:'+unitId);
       if(!unit)fail('Inventory item not found.');
       const secret=await this.storage.get('iv:secret:'+unitId);
       const credentials=await this.vault.decrypt(secret,unit.id+':'+unit.productId);
+      if(action==='deliveryDetails'){
+        let account;try{account=JSON.parse(credentials);}catch{fail('This item has no structured email/password delivery details.');}
+        if(!(typeof account.email==='string'&&account.email||typeof account.username==='string'&&account.username)||typeof account.password!=='string')fail('Email or username and password are not recorded.');
+        await this.storage.transaction(tx=>this.audit(tx,claims,'delivery_details_viewed',unitId,requestId));
+        return {unitId,email:account.email||'',...(account.username?{username:account.username}:{}),password:account.password};
+      }
       await this.storage.transaction(tx=>this.audit(tx,claims,'credentials_revealed',unitId,requestId));
       return {unitId,credentials};
     }
@@ -81,9 +87,17 @@ export class InventoryProgram {
     }
     if(action==='receive'){
       const credentials=text(input.credentials,'delivery credentials',12000);
-      const cost=String(input.cost??'').trim(),currency=input.currency;
-      if(!/^\d{1,9}(\.\d{1,6})?$/.test(cost)||!['BDT','USD','USDT'].includes(currency))fail('Enter a valid acquisition cost and currency.');
-      if(!date(input.acquiredAt)||input.expiresAt&&(!date(input.expiresAt)||input.expiresAt<input.acquiredAt))fail('Enter valid acquisition and stock expiry dates.');
+      const shared=input.sharedAccount===true,unknown=shared&&input.metadataIncomplete===true;
+      const cost=unknown&&input.cost==null?null:String(input.cost??'').trim(),currency=unknown&&input.currency==null?null:input.currency;
+      if(!(unknown&&cost===null&&currency===null)&&(!/^\d{1,9}(\.\d{1,6})?$/.test(cost)||!['BDT','USD','USDT'].includes(currency)))fail('Enter a valid acquisition cost and currency.');
+      if(!(unknown&&input.acquiredAt==null)&&!date(input.acquiredAt)||input.expiresAt&&(!date(input.expiresAt)||input.acquiredAt&&input.expiresAt<input.acquiredAt))fail('Enter valid acquisition and stock expiry dates.');
+      const inferSupplierProduct=shared&&input.sourceId&&input.offerId;
+      if(shared&&!Array.isArray(input.enabledProductIds)&&!inferSupplierProduct)fail('Choose the products this shared account can fulfill.');
+      const enabledProductIds=shared?[...new Set(input.enabledProductIds||[])]:[];
+      if(shared&&((!enabledProductIds.length&&!inferSupplierProduct)||enabledProductIds.length>19||enabledProductIds.some(id=>!validId(id))))fail('Choose the products this shared account can fulfill.');
+      const supplierTermYears=shared&&input.supplierTermYears?Number(input.supplierTermYears):null,warrantyHours=shared&&input.warrantyHours?Number(input.warrantyHours):null;
+      if(supplierTermYears!==null&&(!Number.isInteger(supplierTermYears)||supplierTermYears<1||supplierTermYears>20)||warrantyHours!==null&&(!Number.isInteger(warrantyHours)||warrantyHours<1||warrantyHours>87600))fail('Enter valid account-plan years and warranty hours.');
+      if(shared)for(const id of enabledProductIds){const linked=await this.references.read('products',id);if(!linked||linked.active===false)fail('Fulfillment product not found or inactive.');}
       let productId,product,source,sourceId=null,offerId=null;
       if(input.sourceId||input.offerId){
         sourceId=requireId(input.sourceId,'supplier');offerId=requireId(input.offerId,'supplier offer');
@@ -101,11 +115,12 @@ export class InventoryProgram {
         }
       }else{productId=requireId(input.productId,'product');product=await this.references.read('products',productId);source=text(input.source,'the supplier/source name');}
       if(!product||product.active===false)fail('Choose an active product or supplier offer.');
+      if(shared&&!enabledProductIds.includes(productId))enabledProductIds.push(productId);
       const id=requestId,fingerprint=await this.vault.fingerprint(credentials),sealed=await this.vault.encrypt(credentials,id+':'+productId);
       return this.storage.transaction(async tx=>{
         const receipt=await tx.get('iv:receipt:'+requestId);if(receipt){if(receipt.digest!==digest||receipt.actor!==claims.sub)fail('Save request conflict.');return receipt.result;}
         if(await tx.get('iv:fingerprint:'+fingerprint))fail('These credentials are already recorded in inventory.');
-        const unit={id,productId,productName:text(product.name,'product name'),source,...(sourceId?{sourceId,offerId}:{}),cost,currency,acquiredAt:input.acquiredAt,expiresAt:input.expiresAt||null,state:'available',createdAt:this.now(),updatedAt:this.now()};
+        const unit={id,productId,productName:text(product.name,'product name'),label:input.label?text(input.label,'account label',100):null,source,...(sourceId?{sourceId,offerId}:{}),cost,currency,acquiredAt:input.acquiredAt||null,expiresAt:input.expiresAt||null,state:'available',createdAt:this.now(),updatedAt:this.now(),...(shared?{sharedAccount:true,enabledProductIds,allocationCount:0,metadataIncomplete:unknown,supplierTermYears,warrantyHours}:{})};
         await tx.put('iv:unit:'+id,unit);await tx.put('iv:secret:'+id,sealed);await tx.put('iv:fingerprint:'+fingerprint,{unitId:id});
         await this.audit(tx,claims,'stock_received',id,requestId);
         const result={unit:publicUnit(unit)};await tx.put('iv:receipt:'+requestId,{actor:claims.sub,digest,result});return result;
@@ -127,15 +142,18 @@ export class InventoryProgram {
         if(unit.state!=='available')fail('This item is no longer available.');
         if(unit.expiresAt&&unit.expiresAt<this.today())fail('This stock item has expired.');
         if(unit.expiresAt&&purchase.expiryDate&&unit.expiresAt<purchase.expiryDate)fail('This stock item expires before the purchased product term ends.');
-        if(purchase.productId!==unit.productId)fail('Purchase and inventory must use the same saved CRM product.');
+        if(unit.sharedAccount?!unit.enabledProductIds?.includes(purchase.productId):purchase.productId!==unit.productId)fail('Purchase and inventory must use the same saved CRM product or an explicitly supported shared account.');
         if(await tx.get('iv:purchase:'+input.purchaseId))fail('This purchase already has an assigned item.');
-        Object.assign(unit,{state:'assigned',customerId:input.customerId,purchaseId:input.purchaseId,assignedAt:this.now(),assignedBy:claims.sub});
-        await tx.put('iv:purchase:'+input.purchaseId,{unitId,customerId:input.customerId});
+        if(unit.sharedAccount)unit.allocationCount=(unit.allocationCount||0)+1;
+        else Object.assign(unit,{state:'assigned',customerId:input.customerId,purchaseId:input.purchaseId,assignedAt:this.now(),assignedBy:claims.sub});
+        await tx.put('iv:purchase:'+input.purchaseId,{unitId,customerId:input.customerId,...(unit.sharedAccount?{sharedAccount:true,startDate:purchase.startDate||null,expiryDate:purchase.expiryDate||null,assignedAt:this.now()}: {})});
       }else if(action==='deliver'){
+        if(unit.sharedAccount)fail('Shared-account delivery must be recorded for an individual customer allocation.');
         if(unit.state!=='assigned')fail('Only an assigned item can be marked delivered.');
         if(input.confirmDelivered!==true)fail('Confirm you have manually delivered the product.');
         Object.assign(unit,{state:'delivered',deliveredAt:this.now(),deliveredBy:claims.sub});
       }else{
+        if(unit.sharedAccount&&unit.allocationCount)fail('Review customer allocations before retiring a shared account.');
         if(unit.state!=='available')fail('Only an unassigned item can be retired.');
         Object.assign(unit,{state:'retired',retiredAt:this.now(),retiredBy:claims.sub});
       }

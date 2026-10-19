@@ -29,6 +29,7 @@ export function customerMatches(customer,query) {
 }
 export function productAccessStatus(record,today=businessDate()) {
   if(['cancelled','renewed'].includes(record.status))return record.status;
+  if(record.expiryUnknown===true)return 'Access term not recorded';
   if(record.startDate>today)return 'Upcoming';
   if(!record.expiryDate)return record.startDate?'No expiry':'Dates not recorded';
   if(record.expiryDate<today)return 'Expired';
@@ -36,10 +37,11 @@ export function productAccessStatus(record,today=businessDate()) {
   return days<=7?'Expiring soon':'Active';
 }
 export function customerSalesSummary(purchases) {
-  const totals=new Map();let count=0;
+  const totals=new Map();let count=0,unrecordedPayments=0;
   for(const purchase of purchases){
     if(['refunded','cancelled'].includes(purchase.paymentStatus))continue;
     count++;
+    if(purchase.paidAmount===null||purchase.paymentStatus==='paid_amount_unknown'){unrecordedPayments++;continue;}
     const currency=String(purchase.currency||'BDT').toUpperCase();
     const amount=Number(purchase.amount);
     const paid=purchase.paidAmount!==undefined?Number(purchase.paidAmount):purchase.paymentStatus==='paid'?amount:0;
@@ -49,6 +51,6 @@ export function customerSalesSummary(purchases) {
     if(purchase.paymentStatus==='partial'&&purchase.paidAmount===undefined)total.unknownPayments++;
     totals.set(currency,total);
   }
-  return {purchaseCount:count,totals:[...totals.values()]};
+  return {purchaseCount:count,totals:[...totals.values()],...(unrecordedPayments?{unrecordedPayments}:{})};
 }
-export const formatMoney=(amount,currency)=>`${Number(amount).toLocaleString(undefined,{maximumFractionDigits:2})} ${currency}`;
+export const formatMoney=(amount,currency)=>amount==null||!Number.isFinite(Number(amount))?'Not recorded':`${Number(amount).toLocaleString(undefined,{maximumFractionDigits:2})} ${currency}`;

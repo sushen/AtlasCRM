@@ -1,5 +1,23 @@
 # Deployment
 
+## Approved CRM inventory release — 2026-10-19
+
+The operator explicitly approved committing/pushing the CRM workflow and releasing
+the live Firebase website. This release activates the operator-only inventory
+backend with INVENTORY_ENABLED=true and INVENTORY_STORAGE=firestore, using the
+existing backed-up keyring as a server secret and the existing protected Firestore
+identity. The same real customer/inventory records are shared with localhost.
+NAM/multi-supplier activation remains disabled; Telegram settings, payment/order
+state, webhook and published offers must remain preserved. No master merge is
+authorized by this release request. Release receipts are recorded after verification.
+
+Scope: focused customer journey, listed-product/owned-account assignment, short
+customer access terms, owned inventory first and structured manual dealer account
+entry. Customer-delivery projection excludes 2FA. Unknown payment/access details
+remain explicitly pending. No supplier purchase, WhatsApp automation, automatic
+credential delivery or access revocation is enabled. All 227 tests, Worker build,
+mocked inventory/checkout runtime and public asset secret scans passed pre-release.
+
 ## Readable Telegram product cards — 2026-10-19
 
 Worker d58fb2c9-f931-41ea-84e9-a73b1802f4e3 releases the requested product text

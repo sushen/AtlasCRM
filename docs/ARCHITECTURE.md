@@ -1,5 +1,18 @@
 # Architecture
 
+## Local customer journey and short-term account access — 2026-10-19
+
+The pure customer-journey utility projects recorded activities, purchases,
+subscriptions and follow-ups without mutating customer qualification. The focused
+view renders purchase totals and inventory assignments before global queues.
+Assign product reuses the existing validated/idempotent purchase save and then a
+separate idempotent inventory allocation; partial success retries retain the saved
+purchase. Shared inventory account units retain per-purchase allocation links,
+explicit fulfillment product IDs and separate supplier terms. Customer access days
+do not inherit supplier years. The operator-only deliveryDetails projection returns
+structured email/password and leaves 2FA server-private. No autonomous messaging,
+access revocation or production release is introduced. See JOURNEY_WORKSPACE.md.
+
 ## Explicit bot offer publication (released 2026-10-19)
 
 Worker ShopProducts projects only explicitly allowlisted Firebase product IDs and

@@ -35,6 +35,30 @@ test('vault encrypts randomized ciphertext and binds it to the unit/product; rot
  const ring=JSON.parse(keyring);ring.activeKeyId='v2';ring.keys.v2=Buffer.alloc(32,9).toString('base64');assert.equal(await new InventoryVault(JSON.stringify(ring)).decrypt(one,'unit:plan'),'fictional-secret');
  assert.throws(()=>new InventoryVault('{}'),/not configured/);
 });
+test('shared accounts retain independent customer allocations and do not invent acquisition cost',async()=>{
+ const {program,refs,state}=setup();
+ refs.set('products/account',{name:'Fictional shared account',active:true});
+ const receivedShared={...received,requestId:'shared-fictional-account-01',productId:'account',sharedAccount:true,enabledProductIds:['plan'],metadataIncomplete:true,cost:null,currency:null,acquiredAt:null,expiresAt:null};
+ const result=await program.command(admin,receivedShared);
+ assert.equal(result.unit.cost,null);assert.equal(result.unit.acquiredAt,null);
+ await program.command(admin,{action:'assign',requestId:'shared-assign-fictional-01',unitId:result.unit.id,customerId:'customer',purchaseId:'purchase'});
+ await program.command(admin,{action:'assign',requestId:'shared-assign-fictional-02',unitId:result.unit.id,customerId:'customer',purchaseId:'other'});
+ const unit=(await program.list(admin)).units[0];assert.equal(unit.state,'available');assert.equal(unit.allocationCount,2);
+ const totals=await program.summary(admin);assert.equal(totals.sharedAccounts,1);assert.equal(totals.sharedAllocations,2);assert.equal(totals.available,0);
+ assert.equal((await program.list(admin,{purchaseId:'purchase'})).allocation.sharedAccount,true);
+ assert.ok(await state.get('iv:purchase:other'));
+ await assert.rejects(program.command(admin,{action:'retire',requestId:'shared-retire-fictional-01',unitId:unit.id}),/allocations/);
+ await assert.rejects(program.command(admin,{...receivedShared,requestId:'shared-bad-products-0001',enabledProductIds:['missing']}),/not found/);
+ assert.ok(!JSON.stringify(await program.list(admin)).includes(received.credentials));
+});
+test('customer delivery details project only email and password without 2FA material',async()=>{
+ const {program,state}=setup();const credential=JSON.stringify({email:'fictional@example.test',password:'fictional-password',totpSeed:'FICTIONAL-2FA-SECRET',recoveryCodes:['private']});
+ const result=await program.command(admin,{...received,credentials:credential});
+ const delivery=await program.command(admin,{action:'deliveryDetails',unitId:result.unit.id,requestId:'delivery-projection-0001'});
+ assert.deepEqual(delivery,{unitId:result.unit.id,email:'fictional@example.test',password:'fictional-password'});
+ assert.ok(!JSON.stringify(delivery).includes('2FA'));assert.ok(!JSON.stringify([...state.values]).includes('FICTIONAL-2FA-SECRET'));
+ await assert.rejects(program.command({sub:'buyer'},{action:'deliveryDetails',unitId:result.unit.id,requestId:'delivery-projection-0002'}),/Operator/);
+});
 test('receive is idempotent, duplicate secrets are refused, and lists/receipts/audit never contain plaintext credentials',async()=>{
  const {state,program}=setup();const first=await program.command(admin,received);await program.command(admin,received);
  assert.equal((await program.list(admin)).units.length,1);assert.equal(first.unit.state,'available');
@@ -128,8 +152,9 @@ test('credential reveal uses literal text and clears on expiry or visibility cha
  const helper=source.slice(source.indexOf('export function showInventoryCredentials'),source.indexOf('\nexport async function openPurchaseInventory')).replace('export ','');
  const {document}=parseHTML('<html><body></body></html>');const timers=[];
  const show=new Function('document','crypto','setTimeout','clearTimeout',helper+';return showInventoryCredentials;')(document,webcrypto,fn=>{timers.push(fn);return 1;},()=>{});
- const api=async()=>({credentials:'<script>fixture-secret</script>'});show('unit',{}, {api});await new Promise(r=>setTimeout(r,0));
+ const api=async(_path,{body})=>{assert.equal(body.action,'deliveryDetails');return {email:'<script>fixture-secret</script>',password:'fictional-password',totpSeed:'MUST-NOT-DISPLAY'};};show('unit',{}, {api});await new Promise(r=>setTimeout(r,0));
  assert.equal(document.querySelectorAll('script').length,0);assert.match(document.querySelector('[data-secret]').textContent,/fixture-secret/);
+ assert.ok(!document.querySelector('[data-secret]').textContent.includes('MUST-NOT-DISPLAY'));
  timers[0]();assert.equal(document.querySelector('[data-secret]'),null);
  show('unit',{}, {api});await new Promise(r=>setTimeout(r,0));document.hidden=true;document.dispatchEvent(new document.defaultView.Event('visibilitychange'));assert.equal(document.querySelector('[data-secret]'),null);
 });

@@ -9,7 +9,7 @@ export class InventoryReferences {
     const response=await this.fetch(url,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(10000),redirect:'manual'});
     if(response.status===404)return null;if(!response.ok)throw Error('Inventory reference lookup unavailable.');
     const {fields}=await response.json();if(!fields)throw Error('Invalid inventory reference response.');
-    const result={id};for(const key of ['name','active','productId','customerId','paymentStatus','expiryDate'])if(fields[key])result[key]=fields[key].stringValue??fields[key].booleanValue??null;
+    const result={id};for(const key of ['name','active','productId','customerId','paymentStatus','operatorConfirmedPaid','expiryUnknown','startDate','expiryDate'])if(fields[key])result[key]=fields[key].stringValue??fields[key].booleanValue??null;
     return result;
   }
   async ensureSupplierProduct(id,offer){

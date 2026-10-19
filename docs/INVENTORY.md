@@ -1,5 +1,56 @@
 # Private owned inventory and combined supplier catalog
 
+The dealer receipt has separate manual Email address, Username, Password and
+2FA secret key inputs. Supplier selection fills source/product/quote only, never
+delivered credentials. Password/2FA inputs are masked. An email or username plus
+password is required for structured account entry; expandable license/other-format
+entry remains separate and cannot be mixed with account fields. Successful saves
+clear credential inputs. Customer delivery returns email/username/password only,
+excludes 2FA and is not sent automatically.
+
+Local UI now leads with Your owned inventory and Add purchased inventory. The
+button focuses supplier search; choose Record manual purchase for an item already
+bought from the dealer. The receipt supports a reusable-account checkbox, label,
+supplier plan years/warranty hours and additional fulfillment products. Its source
+product is automatically included. Actual unit cost, purchase date and received
+credentials remain explicit. This does not order/pay the supplier. Customer access
+days are selected later at assignment, independently of account supplier terms.
+
+## Reusable accounts and real operator intake (local development, 2026-10-19)
+
+An operator may record an explicitly shared account asset rather than a single-use
+delivery unit. `sharedAccount` units keep an explicit enabledProductIds fulfillment
+allowlist and allocationCount. Each paid purchase gets its own iv:purchase entry
+with customer and start/expiry dates; allocating another purchase does not overwrite
+the first customer or consume the whole account. Credentials remain behind the
+existing vault/view mechanism. Account capacity is unknown, not unlimited.
+
+For explicitly incomplete shared-account intake, unknown cost/currency/acquisition
+date remain null with metadataIncomplete:true instead of inventing a zero price
+or purchase date. Account expiry is also labeled unrecorded. These accounts are
+counted separately from exclusive ready-to-deliver units and supplier stock; unknown
+customer capacity is never added to potential sellable stock. Generic delivery or
+retirement cannot silently apply to an account with customer allocations.
+
+Two operator-supplied real accounts were recorded and privately read-verified.
+One was allocated to the operator-confirmed one-day USD 1 purchase. No external
+login, credential delivery or customer message was performed. The second reported
+customer purchase still lacks payment/term details. Secrets, customer identity and
+operation receipts remain only in ignored private storage, never this documentation.
+
+Subsequent clarification links both accounts to the exact K12 two-year/24-hour
+warranty catalog item, with actual purchase cost USD 3.28 each. Supplier plan
+duration and warranty do not set customer access expiry. Each new customer or
+renewal purchase may allocate the same account with its own short start/expiry
+dates. Customer capacity is not asserted. Actual external access revocation and
+credential rotation are not implemented by recording an expiry.
+
+The default operator account-details view calls deliveryDetails and returns only
+the structured email and password. It excludes 2FA/recovery fields before responding
+to the browser and audits the view. The separate existing admin reveal command
+remains privileged; it is not used by the customer-delivery UI. No external send
+occurs merely by assigning or viewing an account.
+
 ## Latest operator direction: supplier-first, shared Firebase
 
 See SUPPLIER_WORKFLOW.md. The main dashboard/workspace starts with actual supplier

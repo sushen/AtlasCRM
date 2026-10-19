@@ -1,5 +1,24 @@
 # Customer Journey
 
+## Reusable inventory account access (local review, 2026-10-19)
+
+The listed product/source account and the customer's access agreement are distinct.
+A two-year supplier account can fulfill multiple independent short-term customer
+purchases. Assign product selects the listed product, an already owned matching
+account, actual amount paid and the customer's access days/dates. A new renewal
+is a separate linked purchase and may reuse that same account. Account capacity
+is not known; dates track agreements and do not automatically revoke external access.
+Default customer delivery details contain email/password only, never 2FA seeds.
+
+## Connected journey review (local development, 2026-10-19)
+
+Inbox & journey now visualizes the whole recorded lifecycle, next action, verified
+message activities and product/payment/subscription context together. Suppression
+and factual message/payment boundaries are preserved. The connected path has mocked
+integration coverage from actual inbound repository/dedup through accepted reply,
+purchase validation, subscription and renewal projections. This is not yet a real
+live-number end-to-end test or enabled autonomous workflow. See JOURNEY_WORKSPACE.md.
+
 ## Supplier-first manual procurement (local review, 2026-10-19)
 
 Inspect supplier offers and comparable terms first. Buy manually, then record

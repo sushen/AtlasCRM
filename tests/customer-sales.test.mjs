@@ -95,6 +95,22 @@ test('form prevents repeated taps and preserves request ID through save retry; r
   assert.equal(calls[0].id,calls[1].id);finish();await retry;await form.onsubmit({preventDefault(){}});assert.equal(calls.length,2);
   assert.match(el.querySelector('[data-sales-status]').textContent,/Purchase saved/);
 });
+test('inventory assignment uses a short customer term rather than supplier years and requires actual paid amount',async()=>{
+ const products=[{id:'k12',name:'Fictional K12 account',price:4.19,currency:'USD',durationYears:2}];
+ const {el}=await view({listProducts:async()=>products,listInventory:async()=>[{id:'owned',state:'available',sharedAccount:true,label:'Owned account',enabledProductIds:['k12']}]});
+ el.querySelector('[data-add-product]').onclick();const form=el.querySelector('form'),field=name=>form.querySelector(`[name="${name}"]`);
+ Object.defineProperty(field('currency'),'value',{configurable:true,get(){return this.querySelector('option[selected]')?.textContent||'BDT';},set(value){this.querySelectorAll('option').forEach(o=>{o.selected=o.textContent===value;});}});
+ field('productId').querySelectorAll('option').forEach(o=>o.selected=o.value==='k12');field('productId').onchange();
+ assert.equal(field('amount').value,'4.19');assert.equal(field('paidAmount').value,'');assert.equal(field('expiryDate').value,'');
+ assert.match(field('inventoryUnitId').textContent,/Owned account/);
+ field('startDate').value='2026-10-19';field('accessDays').value='3';field('accessDays').oninput();
+ assert.equal(field('expiryDate').value,'2026-10-22');
+});
+test('unknown paid amount is excluded from totals and unknown expiry is not perpetual access',()=>{
+ const summary=customerSalesSummary([{amount:1,paidAmount:1,currency:'USD',paymentStatus:'paid'},{amount:4.19,paidAmount:null,currency:'USD',paymentStatus:'paid_amount_unknown'}]);
+ assert.equal(summary.purchaseCount,2);assert.equal(summary.totals[0].spent,1);assert.equal(summary.unrecordedPayments,1);
+ assert.equal(productAccessStatus({startDate:'2026-10-19',expiryDate:null,expiryUnknown:true},'2026-10-19'),'Access term not recorded');
+});
 test('real profile connects sales outside timeline and phone search uses shared normalization',async()=>{
   const app=await readFile(new URL('../js/app.js',import.meta.url),'utf8');
   const profileSource=app.slice(app.indexOf('async function profile(id)'),app.indexOf('\nfunction waModal(id)'));

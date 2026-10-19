@@ -5,7 +5,7 @@ export async function renderInventorySummary(root,user,{api=inventoryFetch,onOpe
   try{
     const result=await api('/api/inventory/summary',{user});
     const supplier=result.supplier,ready=supplier?.status==='available';
-    const partial=ready&&(supplier.unknown>0||supplier.stale||result.truncated);
+    const partial=ready&&(supplier.unknown>0||supplier.stale||result.truncated||result.sharedAccounts>0);
     const potential=ready&&Number.isFinite(result.available)?(result.potentialKnown??result.available+supplier.known):null;
     const card=(label,value,note)=>`<div class="card stat"><div class="stat-label">${label}</div><div class="stat-value">${value===null?'Not connected':esc(value)}</div><div class="muted small">${note}</div></div>`;
     const sources=supplier?.sources||[];
@@ -13,6 +13,7 @@ export async function renderInventorySummary(root,user,{api=inventoryFetch,onOpe
     const maximum=Math.max(1,...bars.map(b=>b.value||0));
     root.innerHTML=`<h2>Stock overview</h2><p class="muted">What you own, what enabled suppliers report, and the potential availability together.</p>
       <div class="grid stock-headline">${card('Your owned stock',result.available,'Unassigned, unexpired units you already own')}${card('Supplier availability',ready?supplier.known:'Unavailable',ready?(supplier.unknown?'Known units; some counts are unspecified':'Across enabled suppliers; shared pools counted once'):'Owned stock is still shown below')}${card('Combined potential stock',potential===null?'Unavailable':potential+(partial?' +':''),'Owned available + known supplier units; not all ready for immediate delivery')}</div>
+      ${result.sharedAccounts?`<div class="grid stock-headline">${card('Owned reusable accounts',result.sharedAccounts,'Real accounts you own; capacity is not yet recorded')}${card('Customer access allocations',result.sharedAllocations||0,'Each purchase keeps its own access dates')}</div><p class="muted small">Reusable accounts are not added to sellable-unit totals because their customer capacity is unknown.</p>`:''}
       ${supplier?.fetchedAt?`<p class="muted small">Supplier data fetched: ${esc(supplier.fetchedAt)}${supplier.snapshot?' · Build-time snapshot; not a live refresh':''}</p>`:''}
       ${partial?'<p class="stock-note">This total is partial or based on a supplier snapshot. Unknown/unlimited stock is not counted as zero. Refresh before promising availability.</p>':''}
       <div class="stock-chart" role="img" aria-label="Stock comparison: ${esc(bars.map(b=>b.name+': '+(b.value===null?'unavailable':b.value)).join('; '))}">${bars.map(b=>`<div class="stock-chart-row"><span>${esc(b.name)}</span><div class="stock-chart-track"><div class="stock-chart-bar ${b.color}" style="width:${Math.round((b.value||0)/maximum*100)}%"></div></div><strong>${b.value===null?'—':esc(b.value)}</strong></div>`).join('')}</div>

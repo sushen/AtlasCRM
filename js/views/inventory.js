@@ -11,9 +11,9 @@ export function showInventoryCredentials(unitId,user,{api=inventoryFetch}={}){
   const close=()=>{closed=true;clearTimeout(timer);wrap.querySelector('[data-secret]').textContent='';wrap.remove();document.removeEventListener('visibilitychange',visibility);};
   const visibility=()=>{if(document.hidden)close();};
   wrap.querySelector('[data-close]').onclick=close;document.addEventListener('visibilitychange',visibility);
-  api('/api/inventory/command',{user,body:{action:'reveal',unitId,requestId:crypto.randomUUID()}}).then(result=>{
+  api('/api/inventory/command',{user,body:{action:'deliveryDetails',unitId,requestId:crypto.randomUUID()}}).then(result=>{
     if(closed||!wrap.isConnected)return;
-    wrap.querySelector('[data-secret]').textContent=result.credentials;result.credentials='';timer=setTimeout(close,30000);
+    wrap.querySelector('[data-secret]').textContent=(result.email?'Email: '+result.email+'\n':'')+(result.username?'Username: '+result.username+'\n':'')+'Password: '+result.password;result.email='';result.username='';result.password='';timer=setTimeout(close,30000);
   }).catch(()=>{if(!closed)wrap.querySelector('[data-secret]').textContent='Credentials could not be revealed. Close and retry.';});
   return close;
 }
@@ -25,7 +25,7 @@ export async function openPurchaseInventory(purchase,user,onManage,{api=inventor
   try{
     const result=await api('/api/inventory/list?purchaseId='+encodeURIComponent(purchase.id),{user});if(!wrap.isConnected)return;
     const unit=result.units[0];
-    body.innerHTML=unit?`<p><strong>${esc(unit.productName)}</strong> · ${esc(unit.state)}</p><p>Acquired from ${esc(unit.source)}</p><button class="button" data-reveal>Reveal credentials</button>`:'<p>No owned stock item is assigned to this purchase.</p><button class="button" data-manage>Assign from inventory</button>';
+    body.innerHTML=unit?`<p><strong>${esc(unit.label||unit.productName)}</strong> · ${unit.sharedAccount?'Shared account access assigned':esc(unit.state)}</p><p>${esc(unit.productName)} · ${esc(unit.source)}</p>${unit.supplierTermYears?`<p>Underlying supplier plan: ${esc(unit.supplierTermYears)} years · Warranty: ${esc(unit.warrantyHours)} hours</p>`:''}${result.allocation?.sharedAccount?`<p>Customer access: ${esc(result.allocation.startDate||'Not recorded')} → ${esc(result.allocation.expiryDate||'Access term not recorded')}</p><p class="muted small">Expiry tracks your agreement; it does not automatically remove the customer’s access to the external account.</p>`:''}<button class="button" data-reveal>View email & password</button><p class="muted small">Customer delivery details exclude 2FA secrets.</p>`:'<p>No owned stock item is assigned to this purchase.</p><button class="button" data-manage>Assign from inventory</button>';
     body.querySelector('[data-reveal]')?.addEventListener('click',()=>showInventoryCredentials(unit.id,user,{api}));
     body.querySelector('[data-manage]')?.addEventListener('click',()=>{wrap.remove();onManage(purchase);});
   }catch(error){body.textContent=error.message||'Private inventory is unavailable.';}
@@ -58,7 +58,9 @@ export async function renderInventory(root,{user,listProducts,createProduct,list
     <label>Supplier's product ID<input name="offerId" required pattern="[A-Za-z0-9_-]{1,100}"></label><label>Underlying stock pool ID<input name="stockPoolId" required pattern="[A-Za-z0-9_-]{1,100}" placeholder="Use the same ID for offers sharing stock"></label>
     <label>Status<select name="enabled"><option value="true">Enabled mapping</option><option value="false">Disabled mapping</option></select></label><button class="button">Save mapping</button></form>
     <div>${(listing.mappings||[]).map(m=>`<p>${esc(m.productName)} ← ${esc(m.sourceId)} / ${esc(m.offerId)} · Pool ${esc(m.stockPoolId)} · ${m.enabled?'enabled':'disabled'}</p>`).join('')||'<p>No supplier mappings saved.</p>'}</div>${listing.mappingsTruncated?'<p>More than 100 mappings exist; this view shows the first 100.</p>':''}</details>
-    <section class="card card-pad"><h2>Items already purchased from suppliers</h2><div data-units></div><button class="button" data-more ${listing.cursor?'':'hidden'}>Load more owned items</button></section>`;
+    <section class="card card-pad" data-owned-inventory><div class="page-heading"><div><h2>Your owned inventory</h2><p class="muted">${listing.units.length}${listing.cursor?' shown':''} purchased account${listing.units.length===1?'':'s'} or item${listing.units.length===1?'':'s'}. Supplier availability is separate.</p></div><button class="button primary" data-add-inventory>Add purchased inventory</button></div><div data-units></div><button class="button" data-more ${listing.cursor?'':'hidden'}>Load more owned items</button></section>`;
+  root.querySelector('[data-supplier-comparison]').before(root.querySelector('[data-owned-inventory]'));
+  root.querySelector('[data-add-inventory]').onclick=()=>{root.querySelector('[data-supplier-comparison]').scrollIntoView({behavior:'smooth',block:'start'});root.querySelector('[data-offer-search]')?.focus({preventScroll:true});};
   const status=root.querySelector('[data-inventory-status]'),units=[...listing.units];let cursor=listing.cursor;
   const reload=()=>renderInventory(root,{user,listProducts,createProduct,listCustomers,listPurchases,context,api});
   root.querySelectorAll('[data-supplier]').forEach(button=>button.onclick=async()=>{
@@ -73,7 +75,7 @@ export async function renderInventory(root,{user,listProducts,createProduct,list
   const assign=root.querySelector('[data-assign]'),field=(form,name)=>form.querySelector(`[name="${name}"]`);
   const unitOptions=()=>{
     const purchase=purchases.find(p=>p.id===field(assign,'purchaseId').value);
-    field(assign,'unitId').innerHTML='<option value="">Choose an available item</option>'+options(units.filter(u=>u.state==='available'&&u.productId===purchase?.productId&&(!u.expiresAt||u.expiresAt>=businessDate())),u=>u.productName+' · '+u.source+' · '+u.acquiredAt+' · '+u.id.slice(0,8));
+    field(assign,'unitId').innerHTML='<option value="">Choose an available item</option>'+options(units.filter(u=>u.state==='available'&&(u.sharedAccount?u.enabledProductIds?.includes(purchase?.productId):u.productId===purchase?.productId)&&(!u.expiresAt||u.expiresAt>=businessDate())),u=>(u.label||u.productName)+(u.sharedAccount?' · shared account':'')+' · '+u.source);
   };
   const purchaseOptions=()=>{field(assign,'purchaseId').innerHTML='<option value="">Choose a paid purchase</option>'+options(purchases.filter(p=>p.customerId===field(assign,'customerId').value&&p.paymentStatus==='paid'&&p.productId),p=>(p.productName||products.find(x=>x.id===p.productId)?.name||p.productId)+' · '+String(p.purchasedAt||'').slice(0,10)+' · '+p.id.slice(0,8));unitOptions();};
   field(assign,'customerId').onchange=purchaseOptions;field(assign,'purchaseId').onchange=unitOptions;
@@ -95,7 +97,7 @@ export async function renderInventory(root,{user,listProducts,createProduct,list
   assign.onsubmit=event=>{event.preventDefault();run(event.currentTarget,'assign');};
   root.querySelector('[data-map]').onsubmit=event=>{event.preventDefault();run(event.currentTarget,'mapOffer');};
   const draw=()=>{
-    root.querySelector('[data-units]').innerHTML=units.map(u=>`<article class="purchase-card"><h3>${esc(u.productName)}</h3><p>${esc(u.state)} · ${esc(u.source)} · Cost ${esc(u.cost)} ${esc(u.currency)}</p><p>Purchased ${esc(u.acquiredAt)} · Stock expiry ${esc(u.expiresAt||'None')}</p>${u.customerId?`<p>Assigned to ${esc(customers.find(c=>c.id===u.customerId)?.name||customerIdentity(customers.find(c=>c.id===u.customerId)))} · Purchase ${esc(u.purchaseId)}</p>`:''}<div class="toolbar"><button type="button" class="button" data-reveal="${esc(u.id)}">Reveal credentials</button>${u.state==='assigned'?`<button class="button" data-deliver="${esc(u.id)}">Record manual delivery</button>`:''}${u.state==='available'?`<button class="button" data-retire="${esc(u.id)}">Retire item</button>`:''}</div></article>`).join('')||'<p>No owned stock recorded.</p>';
+    root.querySelector('[data-units]').innerHTML=units.map(u=>`<article class="purchase-card"><h3>${esc(u.label||u.productName)}</h3><p>${esc(u.productName)}</p><p>${u.sharedAccount?`Reusable account · ${u.allocationCount||0} customer allocations · capacity not recorded`:esc(u.state)}</p><p>${esc(u.source)} · ${u.cost===null?'Acquisition cost not recorded':'Cost '+esc(u.cost)+' '+esc(u.currency)}</p><p>Acquired ${esc(u.acquiredAt||'Not recorded')} · Account expiry ${esc(u.expiresAt||(u.metadataIncomplete?'Not recorded':'None'))}</p>${u.customerId?`<p>Assigned to ${esc(customers.find(c=>c.id===u.customerId)?.name||customerIdentity(customers.find(c=>c.id===u.customerId)))} · Purchase ${esc(u.purchaseId)}</p>`:''}<div class="toolbar"><button type="button" class="button" data-reveal="${esc(u.id)}">View account details</button>${u.state==='assigned'?`<button class="button" data-deliver="${esc(u.id)}">Record manual delivery</button>`:''}${u.state==='available'&&!u.allocationCount?`<button class="button" data-retire="${esc(u.id)}">Retire item</button>`:''}</div></article>`).join('')||'<p>No owned stock recorded.</p>';
     root.querySelectorAll('[data-reveal]').forEach(button=>button.onclick=()=>showInventoryCredentials(button.dataset.reveal,user,{api}));
     for(const action of ['deliver','retire'])root.querySelectorAll('[data-'+action+']').forEach(button=>button.onclick=async()=>{
       if(!confirm(action==='deliver'?'Confirm you manually delivered this product to the assigned customer.':'Retire this unassigned item? It will no longer be available for assignment.'))return;
@@ -107,5 +109,5 @@ export async function renderInventory(root,{user,listProducts,createProduct,list
     event.target.disabled=true;try{const next=await api('/api/inventory/list?cursor='+encodeURIComponent(cursor),{user});units.push(...next.units);cursor=next.cursor;draw();unitOptions();event.target.hidden=!cursor;}catch(error){status.textContent=error.message;}finally{event.target.disabled=false;}
   };
   draw();
-  await renderSupplierComparison(root.querySelector('[data-supplier-comparison]'),{user,api,onRecorded:reload});
+  await renderSupplierComparison(root.querySelector('[data-supplier-comparison]'),{user,api,onRecorded:reload,listProducts});
 }

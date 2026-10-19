@@ -2,7 +2,7 @@ import {inventoryFetch} from '../services/inventory-api.js';
 import {businessDate} from '../utils/customer-sales.js';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cost=offer=>Number.isFinite(offer.unitCost)?`${offer.unitCost.toLocaleString()} ${offer.currency}`:'Acquisition cost unavailable';
-export async function renderSupplierComparison(root,{user,api=inventoryFetch,onRecorded=async()=>{}}={}){
+export async function renderSupplierComparison(root,{user,api=inventoryFetch,onRecorded=async()=>{},listProducts=async()=>[]}={}){
   root.innerHTML='<h2>Compare supplier offers</h2><p role="status">Loading supplier products…</p>';
   let listing;
   try{listing=await api('/api/inventory/offers',{user});if(!Array.isArray(listing.sources)||!Array.isArray(listing.offers))throw Error();}
@@ -16,22 +16,34 @@ export async function renderSupplierComparison(root,{user,api=inventoryFetch,onR
     <div class="table-wrap"><table class="data-table"><thead><tr><th>Compare</th><th>Product / plan</th><th>Supplier</th><th>Supplier cost</th><th>Availability</th><th>Manual purchase</th></tr></thead><tbody data-offer-rows></tbody></table></div><button class="button" data-more-offers>Show more offers</button>`;
   const search=root.querySelector('[data-offer-search]'),source=root.querySelector('[data-offer-source]');
   const key=o=>o.sourceId+':'+o.id;
-  const openReceive=offer=>{
+  const openReceive=async offer=>{
+    let savedProducts=[];try{savedProducts=await listProducts();}catch{/* The source product is still linked automatically. */}
     const document=root.ownerDocument,wrap=document.createElement('div');wrap.className='modal-backdrop';
     wrap.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="manual-supplier-title"><div class="modal-header"><h2 id="manual-supplier-title">Record completed supplier purchase</h2><button class="button" data-close>Cancel</button></div><div class="modal-body"><strong>${esc(offer.name)}</strong><p>Supplier: ${esc(offer.sourceId)} · Quoted cost: ${esc(cost(offer))}</p><p class="muted">Buy from the supplier yourself first. This form records one purchased item; it does not order or pay the supplier.</p><form class="inventory-form">
       <label>Actual amount paid for this unit<input name="cost" inputmode="decimal" pattern="[0-9]{1,9}([.][0-9]{1,6})?" required ${Number.isFinite(offer.unitCost)?`value="${offer.unitCost}"`:''}></label><p>Currency: ${esc(offer.currency)}</p>
       <label>Purchased on<input type="date" name="acquiredAt" value="${businessDate()}" required></label><label>Item expires on (optional)<input type="date" name="expiresAt"></label>
-      <label>Credentials / license delivered by supplier<textarea name="credentials" rows="4" maxlength="12000" required autocomplete="off" spellcheck="false"></textarea></label>
+      <label class="checkbox-field"><input type="checkbox" name="sharedAccount"> Reusable account — assign short access terms to customers</label>
+      <div data-shared-fields hidden><label>Account label<input name="label" maxlength="100" placeholder="For example: ChatGPT Account 3"></label><div class="sales-fields"><label>Underlying plan length (years, optional)<input name="supplierTermYears" type="number" min="1" max="20"></label><label>Supplier warranty (hours, optional)<input name="warrantyHours" type="number" min="1" max="87600"></label></div><p class="muted small">The supplier product is linked automatically. Also allow this account to fulfill:</p>${savedProducts.filter(p=>p.active!==false&&p.kind!=='shared_account').slice(0,19).map(p=>`<label class="checkbox-field"><input type="checkbox" data-fulfillment value="${esc(p.id)}"> ${esc(p.name)}</label>`).join('')}<p class="muted small">Customer access days are entered later during assignment. Plan years and warranty do not set customer expiry.</p></div>
+      <fieldset class="card card-pad"><legend>Account details you received</legend><p class="muted small">Enter these manually from your dealer delivery. Supplier search fills the product, source and price only.</p><label>Email address<input name="accountEmail" type="email" maxlength="320" autocomplete="off" spellcheck="false"></label><label>Username (if different or no email)<input name="accountUsername" maxlength="320" autocomplete="off" spellcheck="false"></label><label>Password<input name="accountPassword" type="password" maxlength="2000" autocomplete="new-password"></label><label>2FA secret key (optional, internal only)<input name="accountTotp" type="password" maxlength="512" autocomplete="new-password" spellcheck="false"></label><p class="muted small">The 2FA key stays private and is excluded from customer delivery details.</p></fieldset>
+      <details><summary>License key or other delivery format instead</summary><label>Other delivery details<textarea name="credentials" rows="3" maxlength="12000" autocomplete="off" spellcheck="false"></textarea></label></details>
       <label class="checkbox-field"><input type="checkbox" name="confirmPurchased" required> I already purchased and received this item from the supplier.</label><p data-receive-error class="error" role="alert"></p><button type="submit" class="button primary">Record purchased item</button></form></div></div>`;
     document.body.append(wrap);const close=wrap.querySelector('[data-close]');close.onclick=()=>wrap.remove();
     const form=wrap.querySelector('form'),button=form.querySelector('button'),requestId=crypto.randomUUID();let busy=false,saved=false;
+    form.querySelector('[name="sharedAccount"]').onchange=event=>{form.querySelector('[data-shared-fields]').hidden=!event.target.checked;};
     form.onsubmit=async event=>{
       event.preventDefault();if(busy||saved)return;busy=true;button.disabled=true;close.disabled=true;
       const body={action:'receive',requestId,sourceId:offer.sourceId,offerId:offer.id,currency:offer.currency};
       for(const name of ['cost','acquiredAt','expiresAt','credentials'])body[name]=form.querySelector(`[name="${name}"]`).value;
+      const account=Object.fromEntries([['email','accountEmail'],['username','accountUsername'],['password','accountPassword'],['totpSeed','accountTotp']].map(([key,name])=>[key,key==='password'?form.querySelector(`[name="${name}"]`).value:form.querySelector(`[name="${name}"]`).value.trim()]));
+      if(Object.values(account).some(Boolean)){
+        if(body.credentials.trim()){form.querySelector('[data-receive-error]').textContent='Use either the account fields or the other delivery format, not both.';busy=false;button.disabled=false;close.disabled=false;return;}
+        if(!(account.email||account.username)||!account.password){form.querySelector('[data-receive-error]').textContent='Enter an email or username and the account password.';busy=false;button.disabled=false;close.disabled=false;return;}
+        body.credentials=JSON.stringify(account);
+      }else if(!body.credentials.trim()){form.querySelector('[data-receive-error]').textContent='Enter the account details or another delivery format.';busy=false;button.disabled=false;close.disabled=false;return;}
       body.confirmPurchased=form.querySelector('[name="confirmPurchased"]').checked;
+      if(form.querySelector('[name="sharedAccount"]').checked){body.sharedAccount=true;body.enabledProductIds=[...form.querySelectorAll('[data-fulfillment]')].filter(c=>c.checked).map(c=>c.value);for(const name of ['label','supplierTermYears','warrantyHours']){const value=form.querySelector(`[name="${name}"]`).value;if(value)body[name]=value;}}
       const controls=form.querySelectorAll('input,textarea');controls.forEach(c=>{c.disabled=true;});
-      try{await api('/api/inventory/command',{user,body});saved=true;form.querySelector('[name="credentials"]').value='';wrap.remove();await onRecorded();}
+      try{await api('/api/inventory/command',{user,body});saved=true;for(const name of ['credentials','accountEmail','accountUsername','accountPassword','accountTotp'])form.querySelector(`[name="${name}"]`).value='';wrap.remove();await onRecorded();}
       catch(error){if(saved)return;form.querySelector('[data-receive-error]').textContent=error.message||'Save could not be confirmed. Retry this form.';button.disabled=false;close.disabled=false;if(error.confirmedRejected)controls.forEach(c=>{c.disabled=false;});}
       finally{busy=false;}
     };

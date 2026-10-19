@@ -1,5 +1,24 @@
 # Data Model
 
+Short-term customer access remains on purchases/subscriptions and shared-account
+iv:purchase allocations. supplierTermYears/warrantyHours on the unit describe the
+source account only. In audited correction records, paidAmount:null and
+paymentStatus:paid_amount_unknown distinguish unknown actual payment from catalog
+reference amount; amountBasis:catalog_reference and catalogPrice retain that quote.
+expiryUnknown:true/null expiry is incomplete access data, never a no-expiry promise.
+Spending excludes unknown paid amounts while purchase counts retain these records.
+
+## Shared account allocations (local development, 2026-10-19)
+
+Optional sharedAccount units add label, enabledProductIds, allocationCount and
+metadataIncomplete. Explicitly unknown acquisition cost/currency/date remain null.
+Shared accounts retain state available for further deliberate allocations; this
+does not assert spare seats or unlimited capacity. Each iv:purchase entry retains
+the specific customer, start/expiry dates and assigned timestamp. Existing exclusive
+unit allocation and immutable customer purchases remain compatible. Shared units
+are excluded from exclusive available totals and reported as sharedAccounts and
+sharedAllocations instead. No browser rule expansion or public credential access.
+
 ## Shared Firebase inventory ledger (local implementation, 2026-10-19)
 
 atlasInventoryState is server-owned under existing default browser denial. Node
