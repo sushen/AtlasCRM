@@ -16,7 +16,7 @@ access and `INVENTORY_ENABLED=true`. Multi-source publication separately needs
 reviewed exact mappings and `MULTI_SUPPLIER_ENABLED=true`. Both flags default off.
 Preserve all live bindings, current webhook/SQLite state and old encryption keys;
 no rules/indexes migration is required. See `INVENTORY.md` for release/rollback.
-All 183 tests, Worker dry-run, mocked inventory and existing checkout runtime
+All 186 tests, Worker dry-run, mocked inventory and existing checkout runtime
 smokes pass. No supplier purchase, production data write or credential upload.
 
 ## Username leads and customer purchases released — 2026-10-19

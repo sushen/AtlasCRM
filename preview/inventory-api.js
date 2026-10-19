@@ -1,9 +1,13 @@
 import {previewState,storeKey} from './preview/runtime.js';
+import {supplierStockSummary} from '../utils/stock-overview.js';
 const receipts=new Map();
 const reject=message=>{const error=Error(message);error.confirmedRejected=true;throw error;};
 export async function inventoryFetch(path,{body}={}){
   if(path==='/api/inventory/summary'){
-    const result={total:previewState.units.length,available:0,assigned:0,delivered:0,expired:0,retired:0,truncated:false};for(const unit of previewState.units)result[unit.state]++;return result;
+    const result={total:previewState.units.length,available:0,assigned:0,delivered:0,expired:0,retired:0,truncated:false};for(const unit of previewState.units)result[unit.state]++;
+    const sources=previewState.suppliers.map(s=>({...s,products:[{available:s.id==='canboso'?2:3}]}));
+    const supplier=supplierStockSummary(sources,sources.filter(s=>s.enabled).flatMap(s=>s.products));
+    return {...result,supplier:{...supplier,status:'available',fetchedAt:new Date().toISOString()},potentialKnown:result.available+supplier.known};
   }
   if(path.startsWith('/api/inventory/list')){
     const purchaseId=new URLSearchParams(path.split('?')[1]).get('purchaseId');

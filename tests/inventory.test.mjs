@@ -12,6 +12,7 @@ import {combinedCatalog} from '../server/inventory/combined-catalog.mjs';
 import {inventoryFetch} from '../js/services/inventory-api.js';
 import {renderInventory,showInventoryCredentials,openPurchaseInventory} from '../js/views/inventory.js';
 import {renderInventorySummary} from '../js/views/inventory-summary.js';
+import {supplierStockSummary,attachSupplierOverview} from '../server/inventory/stock-overview.mjs';
 import worker from '../worker/index.mjs';
 import {AtlasCoordinator} from '../worker/coordinator.mjs';
 if(!globalThis.crypto)globalThis.crypto=webcrypto;
@@ -159,4 +160,18 @@ test('dashboard summary distinguishes owned stock from supplier stock and never 
  await renderInventorySummary(root,{}, {api:async()=>({available:3,assigned:2,delivered:1,expired:4,retired:0,total:10,truncated:false}),onOpen:()=>{opened++;}});
  assert.match(root.textContent,/Your owned stock/);assert.match(root.textContent,/Available to assign3/);root.querySelector('[data-open-inventory]').onclick();assert.equal(opened,1);
  await renderInventorySummary(root,{}, {api:async()=>{throw Error('Inventory unavailable');}});assert.match(root.textContent,/Inventory unavailable/);assert.equal(root.querySelectorAll('.stat-value').length,0);
+});
+test('stock comparison keeps supplier breakdown separate from deduplicated totals and retains partial known counts',()=>{
+ const result=supplierStockSummary([{id:'a',enabled:true,products:[{available:5}]},{id:'b',enabled:false,products:[{available:99}]}],[{available:3},{available:null,knownAvailable:2}],{stale:true});
+ assert.equal(result.known,5);assert.equal(result.unknown,1);assert.equal(result.sources[1].known,0);assert.equal(result.stale,true);assert.ok(!JSON.stringify(result).includes('products'));
+});
+test('supplier refresh failure preserves owned counts without inventing a combined total',async()=>{
+ const owned={available:4,total:8};
+ const result=await attachSupplierOverview(owned,{states:[{id:'a',name:'A',enabled:true}],loadCatalog:async()=>{throw Error('provider secret');},getSources:()=>[]});
+ assert.equal(result.available,4);assert.equal(result.potentialKnown,null);assert.equal(result.supplier.status,'unavailable');assert.ok(!JSON.stringify(result).includes('provider secret'));
+});
+test('visual overview shows potential counts, source switches and unknown-count warning',async()=>{
+ const {document}=parseHTML('<main></main>');const root=document.querySelector('main');
+ await renderInventorySummary(root,{}, {api:async()=>({available:4,total:4,assigned:0,delivered:0,expired:0,retired:0,potentialKnown:9,supplier:{status:'available',known:5,unknown:1,sources:[{name:'A',enabled:true,known:5,unknown:1},{name:'B',enabled:false}]}})});
+ assert.match(root.textContent,/Combined potential stock9/);assert.match(root.textContent,/Excluded/);assert.match(root.textContent,/partial/);assert.equal(root.querySelectorAll('.stock-chart-bar').length,2);
 });

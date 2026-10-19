@@ -35,8 +35,15 @@ listings. Existing saved order quotes and all private owned stock remain intact.
 Turning a source back on fetches fresh data; a failing enabled source does not
 silently fall back to its disabled or outdated contribution.
 
-The CRM Dashboard's **Your owned stock** section uses the authenticated
-`/api/inventory/summary` endpoint. It displays available-to-assign, assigned awaiting
+The CRM Dashboard's **Stock overview** section uses the authenticated
+`/api/inventory/summary` endpoint. It compares ready-to-assign owned units, each enabled supplier, the deduplicated
+supplier total and a combined potential total in headline cards, a horizontal bar
+chart and source table. Potential total is owned available plus known supplier units;
+it is not an immediate-delivery promise. Unknown/unlimited or stale supplier data
+is labeled partial. Refresh failure preserves owned counts and shows unavailable
+for supplier/combined counts. Public stock rules remain supplier-only.
+
+It also displays available-to-assign, assigned awaiting
 delivery, delivered, expired unassigned, retired and total recorded units. It never
 counts supplier availability. Summary reads scan metadata in 500-item pages; above
 10,000 units the UI explicitly labels the result as partial. Unavailable inventory
@@ -168,7 +175,7 @@ credential recovery. Roll back feature flags to false without deleting state.
 
 ## Validation
 
-All 183 tests pass. Both workspace and receive form were visually checked at
+All 186 tests pass. Both workspace and receive form were visually checked at
 390px using fictional stock only. `tests/inventory.test.mjs` covers vault binding/rotation,
 metadata privacy, duplicates/idempotency, concurrency, authorization, reference and
 expiry validation, exact plan mapping, mixed currencies and cheapest-cost pricing,

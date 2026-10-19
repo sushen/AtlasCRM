@@ -16,6 +16,7 @@ import {NamCatalog} from '../server/suppliers/nam.mjs';
 import {combinedCatalog} from '../server/inventory/combined-catalog.mjs';
 import {supplierStates} from '../server/inventory/suppliers.mjs';
 import {CATALOG_DEFAULT_MARKUP_PERCENT,CATALOG_STOCK_MARKUP_TIERS} from '../js/utils/catalog-pricing.js';
+import {attachSupplierOverview} from '../server/inventory/stock-overview.mjs';
 
 const reply = (data, status=200) => Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
 // Single coordinator per Atlas Worker: cache and replay/disable state survive eviction.
@@ -42,6 +43,7 @@ export class AtlasCoordinator {
   async catalog() {
     const states=await supplierStates(this.state.storage,this.supplierReadiness()),currentEnabled=states.find(s=>s.id==='canboso').enabled,namEnabled=states.find(s=>s.id==='nam').enabled;
     const empty={products:[],fetchedAt:new Date().toISOString(),storefront:storefrontSettings(this.env),pricing:{mode:'stock_tiers',defaultMarkupPercent:CATALOG_DEFAULT_MARKUP_PERCENT,tiers:CATALOG_STOCK_MARKUP_TIERS}};
+    this.overviewSources=states.map(s=>({...s,products:[]}));
     if(!currentEnabled&&!namEnabled)return empty;
     if(namEnabled&&this.env.MULTI_SUPPLIER_ENABLED!=='true')throw Error('Enabled supplier is not configured.');
     if(this.env.MULTI_SUPPLIER_ENABLED==='true'){
@@ -54,12 +56,14 @@ export class AtlasCoordinator {
       const products=await Promise.all([...new Set(maps.filter(m=>m.enabled).map(m=>m.productId))].map(id=>references.read('products',id)));
       if(products.some(p=>!p))throw Error('Mapped CRM product no longer exists.');
       const merged=combinedCatalog({products:catalog.products,offers:currentEnabled?current.offerSnapshot:[]},newOffers,maps,products);
+      this.overviewSources=states.map(s=>({...s,products:s.id==='canboso'?catalog.products:newOffers}));
       this.combinedSelections=merged.selections;
       return {...catalog,products:merged.products,fetchedAt:new Date().toISOString(),pricing:{...catalog.pricing,basis:'cheapest_available_supplier_cost'},stale:false};
     }
     const saved=await this.state.storage.get('catalog');
-    if(saved?.until>Date.now()) return saved.data;
-    const fallback=()=>saved?.until>Date.now()-6*3600000?{...saved.data,stale:true,storefront:storefrontSettings(this.env)}:null;
+    const track=data=>{this.overviewSources=states.map(s=>({...s,products:s.id==='canboso'?data.products:[]}));return data;};
+    if(saved?.until>Date.now()) return track(saved.data);
+    const fallback=()=>saved?.until>Date.now()-6*3600000?track({...saved.data,stale:true,storefront:storefrontSettings(this.env)}):null;
     const cooldown=await this.state.storage.get('supplier-cooldown') || 0;
     if(cooldown>Date.now()) {const data=fallback();if(data)return data;throw Error('supplier_cooldown');}
     const supplier=supplierConfiguration(this.env);
@@ -67,7 +71,7 @@ export class AtlasCoordinator {
     try {
       const data=await adapter.list();
       await this.state.storage.put('catalog',{data,until:Date.now()+60000});
-      return data;
+      return track(data);
     } catch {
       await this.state.storage.put('supplier-cooldown',Math.max(Date.now()+30000,adapter.blockedUntil));
       const fallbackData=fallback();if(fallbackData)return fallbackData;
@@ -101,7 +105,11 @@ export class AtlasCoordinator {
         if(claims?.atlasOperator!==true||!claims.sub)return reply({code:'operator_required'},403);
         if(!await this.rate('inventory-global',100)||!await this.rate('client:inventory:'+claims.sub,40))return reply({message:'Too many inventory requests. Retry shortly.'},429);
         const inventory=new InventoryProgram(this.state.storage,{keyring:this.env.INVENTORY_KEYRING,references:new InventoryReferences(this.env),supplierReadiness:this.supplierReadiness()});
-        return reply(command?await inventory.command(claims,value):summary?await inventory.summary(claims):await inventory.list(claims,query));
+        if(summary){
+          const owned=await inventory.summary(claims),states=await supplierStates(this.state.storage,this.supplierReadiness());
+          return reply(await attachSupplierOverview(owned,{states,loadCatalog:()=>this.catalog(),getSources:()=>this.overviewSources}));
+        }
+        return reply(command?await inventory.command(claims,value):await inventory.list(claims,query));
       }catch(error){return reply({code:'inventory_request_rejected',message:error instanceof InventoryError?error.message:'Private inventory is unavailable. No credentials were returned.'},error instanceof InventoryError?400:503);}
     }
     if(path==='/partner-performance'){

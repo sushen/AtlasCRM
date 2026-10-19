@@ -13,7 +13,9 @@ See [CI_CD.md](CI_CD.md) for commands, preview limits and promotion procedure.
 
 Implemented gated operator-only owned-stock receipt/assignment/reveal/delivery,
 server encryption and reference validation, persistent per-supplier on/off controls,
-and owned-stock counts on the CRM dashboard. Disabling a source excludes its data
+and a visual stock comparison on the CRM dashboard: owned availability, per-source
+counts, deduplicated enabled-supplier availability and combined potential stock.
+Unknown or stale supplier counts are labeled; refresh failures retain owned data. Disabling a source excludes its data
 and invalidates cache without altering owned units or saved order quotes.
 Private inventory in CRM and
 Stock and credentials on purchase cards. Public supplier availability remains
@@ -22,7 +24,7 @@ USD and cheapest available comparable cost plus current margin. Exact mappings
 and shared stock pools avoid name guessing/double-counting. Fresh GET-only NAM
 adapter and combined catalog are prepared behind `MULTI_SUPPLIER_ENABLED`.
 
-All 183 tests, Worker dry-run, mocked inventory workerd/SQLite flow and existing
+All 186 tests, Worker dry-run, mocked inventory workerd/SQLite flow and existing
 manual-payment runtime smoke pass. Provider health/products returned HTTP 502;
 no NAM token was present in saved private config, so its product wrapper is not
 verified live. A server keyring and separate private backup were generated locally with restricted

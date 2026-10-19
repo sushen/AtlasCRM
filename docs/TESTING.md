@@ -2,7 +2,7 @@
 
 ## Inventory / second-supplier checks (2026-10-19)
 
-All 183 tests pass, including `tests/inventory.test.mjs`: authenticated vault
+All 186 tests pass, including `tests/inventory.test.mjs`: authenticated vault
 binding/rotation, idempotency, concurrency, reference/expiry/state checks, supplier
 projection and safe HTTP/UI retries. `scripts/inventory-smoke.mjs` exercises real
 signed operator/buyer tokens with mocked Firestore/provider reads in workerd and
