@@ -3,8 +3,10 @@
 ## Branch-first workflow (2026-10-19)
 
 The operator requires local tests → online feature-branch preview → explicit
-acceptance before merging to master. CI checks and an isolated fictional-data
-GitHub Pages preview are prepared; no production deployment occurs on branch push.
+acceptance before merging to master. CI checks and the isolated fictional-data GitHub Pages preview are live on the
+`codex/quick-add-lead` branch. Initial commit `ca47fae` passed all checks and was
+published at `https://sushen.github.io/AtlasCRM/`. Draft PR: `sushen/AtlasCRM#1`.
+Master remains at `853a4dd`; no production deployment occurs on branch push.
 See [CI_CD.md](CI_CD.md) for commands, preview limits and promotion procedure.
 
 ## Private inventory and second supplier — prepared 2026-10-19, not deployed

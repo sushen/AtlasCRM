@@ -49,3 +49,11 @@ If documentation conflicts with code, investigate before changing either one.
 ## Documentation maintenance
 
 A task is incomplete when it materially changes architecture, schema, security, journey behavior, setup, deployment, or project state while leaving authoritative documentation incorrect. Update only affected documents. Code comments explain local implementation reasoning; `docs/` stores system knowledge; ADRs record significant decisions; `CURRENT_STATE.md` stores durable handoff facts; prompts are temporary task instructions.
+
+## Branch review and releases
+
+The operator requires local testing, then an online feature-branch preview, then
+explicit acceptance before merging to master. Commit/push reviewed source on the
+feature branch; do not merge, enable auto-merge or deploy production merely because
+CI passes. Keep online preview data isolated from live customers and credentials.
+See `docs/CI_CD.md` for the current pipeline and preview limitations.

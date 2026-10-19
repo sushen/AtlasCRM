@@ -4,6 +4,15 @@ Operator decision, 2026-10-19: test locally, test the feature branch online, the
 merge to master only after explicit acceptance. No direct production deployment
 is part of pushing a branch. Earlier manual releases remain historical facts.
 
+## Verified setup
+
+The feature branch is pushed to GitHub and draft PR 1 targets master. The first
+GitHub run passed all checks and Pages deployment; the published page's revision
+matched the pushed commit. Browser checks confirmed dashboard, private inventory,
+simulated supplier switching and combined catalog rendering. Repository master
+was not merged or advanced. The repository and preview were already explicitly
+identified as public; no private data or runtime keys were committed.
+
 ## Current pipeline
 
 `.github/workflows/branch-review.yml` runs on master, v2-development and codex
