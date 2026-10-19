@@ -24,6 +24,7 @@ jobs:
       - run: npm run worker:check
       - run: node scripts/inventory-smoke.mjs
       - run: node scripts/worker-smoke.mjs --manual-payments
+      - run: node scripts/worker-smoke.mjs --manual-payments --clean-shop
       - run: node scripts/build-preview.mjs
         env:
           PREVIEW_BASE_PATH: /AtlasCRM/

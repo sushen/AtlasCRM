@@ -1,5 +1,9 @@
 # Development
 
+For local inventory and supplier-control review, use the loopback workspace in
+`LOCAL_WORKSPACE.md`. It uses actual encrypted local storage and real catalog reads
+without production CRM writes. Review locally before pushing or deploying.
+
 ## Branch-first workflow (2026-10-19)
 
 The operator requires local tests → online feature-branch preview → explicit

@@ -14,3 +14,7 @@
 .stock-headline{grid-template-columns:repeat(3,minmax(0,1fr));margin:20px 0}.stock-headline .stat-value{font-size:34px;color:var(--accent)}.stock-chart{display:grid;gap:16px;padding:20px 0}.stock-chart-row{display:grid;grid-template-columns:220px minmax(0,1fr) 65px;align-items:center;gap:14px}.stock-chart-track{height:18px;background:#edf1f3;border-radius:9px;overflow:hidden}.stock-chart-bar{height:100%;border-radius:9px;background:#5684c4}.stock-chart-bar.owned{background:var(--accent)}.stock-chart-row strong{text-align:right}.stock-note{padding:12px;background:#fff3cd;border-radius:6px}.stock-sources{margin:16px 0 28px}@media(max-width:650px){.stock-headline{grid-template-columns:1fr}.stock-chart-row{grid-template-columns:minmax(0,1fr) 50px}.stock-chart-row>span{grid-column:1/-1}.stock-chart-row strong{text-align:right}}
 
 @media(max-width:900px){.app-shell{grid-template-columns:minmax(0,1fr)}.sidebar,.content,.stock-sources{min-width:0}.stock-headline>.card{min-width:0}}
+
+.inventory-form .checkbox-field{display:flex;align-items:center;gap:8px}.inventory-form .checkbox-field input{width:20px;min-height:20px}.stock-headline .card{overflow-wrap:anywhere}
+
+[data-selected-offers] .stock-headline{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}[data-selected-offers] p{overflow-wrap:anywhere}[data-supplier-comparison]{margin-bottom:20px}

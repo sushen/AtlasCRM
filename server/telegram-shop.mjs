@@ -4,6 +4,7 @@ import { familyMenu,groupMenu,productMessage } from './telegram-catalog.mjs';
 import { productFamily } from '../js/utils/catalog-groups.js';
 import {telegramProductImage,telegramBrandImage} from '../js/utils/shop-images.js';
 import {ManualCheckoutConversation,paymentOrderSummary} from './telegram-manual-checkout.mjs';
+import {productGridMenu,readableProductCard} from './telegram-shop-layout.mjs';
 
 export const SHOP_COMMANDS=[{command:'start',description:'Open Atlas Market'},{command:'menu',description:'Open shop menu'},
   {command:'products',description:'Browse products'},{command:'profile',description:'Your shop profile'},
@@ -37,14 +38,15 @@ export function orderSummary(order) {
     'Reference: '+order.product.id].join('\n');
 }
 export class TelegramShop {
-  constructor({orders,api,catalog,adminIds=[],supportUrl='',channelUrl='',username='AtlasCrmMarketBot',payments,partners}) {
+  constructor({orders,api,catalog,adminIds=[],supportUrl='',channelUrl='',username='AtlasCrmMarketBot',payments,partners,cleanMenu=false}) {
     this.orders=orders;this.api=api;this.catalog=catalog;this.admins=new Set(adminIds.map(String));
     this.supportUrl=shopContactUrl(supportUrl);this.channelUrl=channelUrl;this.username=username;
-    this.partners=partners;
+    this.partners=partners;this.cleanMenu=cleanMenu;
     this.checkout=payments?new ManualCheckoutConversation({orders,api,catalog,payments,adminIds,supportUrl:this.supportUrl}):null;
   }
   contactRows(){return this.supportUrl?[[{text:'Contact admin to order',url:this.supportUrl}]]:[];}
   detail(product,freshness) {
+    if(this.cleanMenu)return readableProductCard(product,freshness);
     const detail=productMessage(product,this.channelUrl,freshness);
     if(product.stock!=='out'&&Number.isFinite(product.price)&&product.price>0&&/^[A-Za-z0-9_-]{1,48}$/.test(product.id))detail.reply_markup.inline_keyboard.unshift([{text:'🛒 Request this product',callback_data:'buy:'+product.id}]);
     detail.reply_markup.inline_keyboard.push(...this.contactRows());return detail;
@@ -61,7 +63,7 @@ export class TelegramShop {
     if(!action&&!/^(buy:|groups:|family:|product:|refresh:|review:)/.test(data))return false;
     if(callback)await this.api.call('answerCallbackQuery',{callback_query_id:callback.id});
     const send=body=>this.api.call('sendMessage',{chat_id:buyer,...body,link_preview_options:{is_disabled:true}});
-    const basic=(text,inline)=>send({text,reply_markup:inline?{inline_keyboard:inline}:this.admins.has(String(buyer))?OPERATOR_MENU:STORE_MENU});
+    const basic=(text,inline)=>send({text,reply_markup:inline?{inline_keyboard:inline}:this.cleanMenu?{remove_keyboard:true}:this.admins.has(String(buyer))?OPERATOR_MENU:STORE_MENU});
     try {
       if(action==='addlead'){
         if(!this.admins.has(String(buyer)))throw new ShopError('Admin access required');
@@ -143,7 +145,8 @@ export class TelegramShop {
         }
         return send(familyMenu(products,family[1],Number(family[2])));
       }
-      if(action==='start'||action==='menu')await basic('Welcome to Atlas Market. Browse products, create an order request and contact admin. Payment references are reviewed by a human before fulfillment.');
+      if(action==='start'||action==='menu')await basic(this.cleanMenu?'Welcome to Atlas Market. Use Menu for Products, Profile, Purchase history, Support and Warranty. Payments and delivery are verified manually.':'Welcome to Atlas Market. Browse products, create an order request and contact admin. Payment references are reviewed by a human before fulfillment.');
+      if(this.cleanMenu)return send(productGridMenu(products));
       return send(groupMenu(products,Number(/^groups:(\d+)$/.exec(data)?.[1]||0)));
     }catch(error){if(error instanceof ShopError)return basic(error.message);throw error;}
   }

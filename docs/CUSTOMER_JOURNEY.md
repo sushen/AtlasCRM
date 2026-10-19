@@ -1,5 +1,14 @@
 # Customer Journey
 
+## Supplier-first manual procurement (local review, 2026-10-19)
+
+Inspect supplier offers and comparable terms first. Buy manually, then record
+the received unit and its credentials. Atlas links the supplier product internally
+without requiring a custom product definition. Record the customer's paid purchase
+and subscription dates, assign the owned unit, and record manual delivery. One
+customer can have multiple product purchases. No upstream purchase or delivery
+is automatically inferred or executed. See SUPPLIER_WORKFLOW.md.
+
 ## Owned-stock assignment (prepared 2026-10-19; disabled)
 
 Record a paid purchase using a saved product, then assign one matching owned stock

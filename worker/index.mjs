@@ -22,7 +22,7 @@ export default {
       if(url.pathname==='/health'&&request.method==='GET')return json({service:'atlas-market',transport:'webhook'});
       if(!env.ATLAS_COORDINATOR)return json({code:'coordinator_not_configured'},503);
       const coordinator=env.ATLAS_COORDINATOR.get(env.ATLAS_COORDINATOR.idFromName('atlas-market'));
-      if(['/api/inventory/list','/api/inventory/summary','/api/inventory/command'].includes(url.pathname)){
+      if(['/api/inventory/list','/api/inventory/offers','/api/inventory/summary','/api/inventory/command'].includes(url.pathname)){
         const origin=request.headers.get('origin'),allowed=String(env.CATALOG_ALLOWED_ORIGINS||'').split(',').map(s=>s.trim());
         if(!origin||!allowed.includes(origin))return json({code:'origin_denied'},403);
         const cors={'Access-Control-Allow-Origin':origin,Vary:'Origin'};
@@ -39,7 +39,7 @@ export default {
         if(!claims)return json({code:'authentication_required'},401,cors);
         if(claims.atlasOperator!==true)return json({code:'operator_required'},403,cors);
         const value=command?await body(request,20000):null;
-        const response=await coordinator.fetch(new Request('https://coordinator/inventory',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({claims,command,summary:url.pathname.endsWith('/summary'),value,query:Object.fromEntries(url.searchParams)})}));
+        const response=await coordinator.fetch(new Request('https://coordinator/inventory',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({claims,command,offers:url.pathname.endsWith('/offers'),summary:url.pathname.endsWith('/summary'),value,query:Object.fromEntries(url.searchParams)})}));
         const headers=new Headers(response.headers);for(const[k,v]of Object.entries(cors))headers.set(k,v);
         return new Response(response.body,{status:response.status,headers});
       }

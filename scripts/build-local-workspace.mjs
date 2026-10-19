@@ -1,0 +1,14 @@
+import {cp,mkdir,readFile,writeFile} from 'node:fs/promises';
+await import('./build-hosting.mjs');
+const target=new URL('../.firebase/local-workspace/',import.meta.url);
+await mkdir(target,{recursive:true});
+await cp(new URL('../.firebase/hosting-public/',import.meta.url),target,{recursive:true});
+const shared=process.argv.includes('--firebase');
+if(!shared)await cp(new URL('../preview/firebase.js',import.meta.url),new URL('js/firebase.js',target));
+await cp(new URL('../preview/local-inventory-api.js',import.meta.url),new URL('js/services/inventory-api.js',target));
+await writeFile(new URL('js/services/catalog-api-config.js',target),"export const CATALOG_WORKER_ORIGIN='';\n");
+await writeFile(new URL('js/services/partner-api.js',target),"export async function partnerFetch(){throw Error('Production partner reporting is disconnected in the local workspace.');}\n");
+await writeFile(new URL('js/services/whatsapp-api.js',target),"export async function checkWhatsAppSending(){throw Error('Sending is disabled in the local workspace.');}export async function sendWhatsAppMessage(){throw Error('Sending is disabled in the local workspace.');}\n");
+let store=await readFile(new URL('js/services/store.js',target),'utf8');store=store.replace("const key='atlas_demo_store'","const key='atlas_local_workspace_store_v1'");if(shared)store=store.replace("return !fb.configured||location.search.includes('demo=1')","return !fb.configured");await writeFile(new URL('js/services/store.js',target),store);
+let html=await readFile(new URL('index.html',target),'utf8');if(!shared)html=html.replace('<head>',`<head><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' https: data:; object-src 'none'; form-action 'none'">`);html=html.replace('<body>','<body><script type="module" src="/js/local-runtime.js"></script>');await writeFile(new URL('index.html',target),html);
+console.log(shared?'Local code prepared with actual Firebase authentication and data. Saves affect the shared CRM.':'Local workspace prepared with separate test data.');

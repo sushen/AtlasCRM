@@ -65,7 +65,7 @@ export const productDefaults=[{name:'ChatGPT subscription',durationDays:30,price
 export const paymentStatuses=['pending','paid','partial','refunded','cancelled'];
 export const subscriptionStatuses=['active','expiring','expired','renewed','cancelled'];
 export const listProducts=()=>listCollection('products');
-export const createProduct=input=>addCollection('products',{name:input.name||'Unnamed product',description:input.description||'',price:Number(input.price)||0,durationDays:Number(input.durationDays)||30,active:input.active!==false});
+export const createProduct=input=>addCollection('products',{name:input.name||'Unnamed product',description:input.description||'',price:Number(input.price)||0,currency:input.currency||'BDT',durationDays:Number(input.durationDays)||30,active:input.active!==false});
 export async function listPurchases(customerId){const all=await listCollection('purchases');return customerId?all.filter(x=>x.customerId===customerId):all}
 export async function createPurchase(input){const p=await addCollection('purchases',{customerId:input.customerId,productId:input.productId||null,amount:Number(input.amount)||0,currency:input.currency||'BDT',paymentStatus:input.paymentStatus||'paid',paymentMethod:input.paymentMethod||'',purchasedAt:input.purchasedAt||now(),notes:input.notes||''});await addActivity(input.customerId,'purchase_added',`Purchase recorded: ${p.amount} ${p.currency}`);return p}
 export function deriveSubscriptionStatus(expiry,status='active',startDate){const label=productAccessStatus({expiryDate:expiry,status,startDate});return ({Upcoming:'upcoming',Expired:'expired','Expiring soon':'expiring',Active:'active','No expiry':'active','Dates not recorded':'unknown'})[label]||label}

@@ -116,7 +116,7 @@ test('inventory client refuses arbitrary URLs and redirects; it never stores cre
 });
 test('inventory receive retry preserves locked credentials and request; successful save removes secret from form',async()=>{
  const {document}=parseHTML('<main></main>');const root=document.querySelector('main');const calls=[];
- const api=async(path,options)=>{if(path.includes('/list'))return {units:[],cursor:null};calls.push(options.body);if(calls.length===1)throw Error('Connection unknown');return {unit:{id:'saved'}};};
+ const api=async(path,options)=>{if(path.includes('/list'))return {units:[],cursor:null};if(path.includes('/offers'))return {sources:[],offers:[]};calls.push(options.body);if(calls.length===1)throw Error('Connection unknown');return {unit:{id:'saved'}};};
  await renderInventory(root,{user:{},listProducts:async()=>[{id:'plan',name:'Plan'}],createProduct:async()=>{},listCustomers:async()=>[],listPurchases:async()=>[],api});
  const form=root.querySelector('[data-receive]');for(const [key,value]of Object.entries(received)){const field=form.querySelector('[name="'+key+'"]');if(!field)continue;if(field.tagName==='SELECT'){for(const o of field.querySelectorAll('option'))o.selected=o.value===value||o.textContent===value;}else field.value=value;}
  form.dispatchEvent(new document.defaultView.Event('submit',{cancelable:true}));await new Promise(r=>setTimeout(r,0));
@@ -174,4 +174,11 @@ test('visual overview shows potential counts, source switches and unknown-count 
  const {document}=parseHTML('<main></main>');const root=document.querySelector('main');
  await renderInventorySummary(root,{}, {api:async()=>({available:4,total:4,assigned:0,delivered:0,expired:0,retired:0,potentialKnown:9,supplier:{status:'available',known:5,unknown:1,sources:[{name:'A',enabled:true,known:5,unknown:1},{name:'B',enabled:false}]}})});
  assert.match(root.textContent,/Combined potential stock9/);assert.match(root.textContent,/Excluded/);assert.match(root.textContent,/partial/);assert.equal(root.querySelectorAll('.stock-chart-bar').length,2);
+});
+test('dashboard product breakdown filters plans, escapes names and labels unspecified stock',async()=>{
+ const {document}=parseHTML('<main></main>');const root=document.querySelector('main');
+ await renderInventorySummary(root,{}, {api:async()=>({available:0,total:0,assigned:0,delivered:0,expired:0,retired:0,supplier:{status:'available',known:10,unknown:1,sources:[],products:[{id:'one',name:'Canva <script>',available:10},{id:'two',name:'Other plan',available:null}]}})});
+ assert.equal(root.querySelectorAll('script').length,0);assert.match(root.textContent,/Unspecified \/ unlimited/);
+ root.querySelector('[data-product-search]').value='canva';root.querySelector('[data-product-search]').oninput();
+ assert.equal(root.querySelectorAll('[data-product-rows] tr').length,1);assert.match(root.querySelector('[data-product-count]').textContent,/1 of 1/);
 });

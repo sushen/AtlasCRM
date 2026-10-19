@@ -1,5 +1,152 @@
 # Atlas CRM - Current State
 
+## Feature-branch source synchronization — 2026-10-19
+
+The operator requested GitHub synchronization after reviewing the functionality.
+The source update includes shared Firebase/local inventory, supplier comparison,
+private test bot, explicit live-offer publication and readable Telegram layout.
+All 215 tests and preview isolation checks pass; staged files pass an actual
+private-value scan. CI now checks both legacy and clean-menu checkout runtimes.
+Source remains on the existing feature branch; master is not merged. The live bot
+and shared Firebase product are current, while the newer dashboard has not been
+released to Firebase Hosting. Earlier local-only notes below describe when those
+changes were prepared and do not imply a Hosting release.
+
+Latest real-bot presentation release: d58fb2c9-f931-41ea-84e9-a73b1802f4e3.
+Product cards use short formatted duration/availability/payment sections and omit
+internal references and the duplicate custom price line. All 34 bindings survive;
+46 affected tests, Worker build/runtime smoke and secret scan pass. No real order
+or payment was created. See DEPLOYMENT.md for rollback details.
+
+## Approved real-bot release — 2026-10-19
+
+The operator requested deployment of the reviewed Telegram presentation and
+ChatGPT offer. Worker 1db2e38c-4679-4a39-8831-6be723c68e58 is released with all
+32 prior bindings preserved, plus explicit product publication and clean-menu vars.
+The live bot now reads the one allowlisted Firebase offer, shows custom price
+first, uses collapsible Menu and a single Buy action, and lists all categories.
+Existing payment/order/partner state and webhook are preserved. Real-bot command
+menus/Menu button were read-verified. Health/public supplier catalog checks pass;
+all 215 tests, Worker build, mocked checkout/delivery and secret scans pass.
+Inventory/NAM and Hosting remain unreleased; master is not merged. See DEPLOYMENT.md.
+Actual Telegram Web verification on the real Atlas Market Bot confirmed the
+published offer, price-first card, single Buy button and native Menu. No real order
+or payment was created for verification.
+
+## Separate Telegram test identity created — 2026-10-19
+
+Official BotFather created Atlas Test (@AtlasCrmSandboxBot) as requested.
+Read-only Telegram API checks verified its identity and absence of a webhook.
+The token is saved in ignored, access-restricted `.worker-private/telegram-test.env`;
+no token is in source control. The separate local sandbox reuses live shop handlers
+for catalog, profile/history, isolated test orders, references/evidence, admin
+review and delivery queues. Private operator access and outbound recipients are
+guarded. Test checkout has no payable destination or QR; every reply is labeled.
+Read-only checks verified 373 supplier products plus the USD 1 / one-day Firebase
+offer. All 210 project tests pass, including full isolated test-order delivery.
+Test order/polling state is separate. This computer must remain running for replies.
+Telegram UI verification confirmed the 374-listing shop and the custom offer's
+USD 1 / one-day details. The phone command-menu failure was traced to missing
+setup methods in the shared Telegram API allowlist, corrected and read-back
+verified on the test bot. Products now puts custom offers directly after all
+category buttons with no main-category Next pages. General navigation has since
+moved into Telegram's collapsible Menu; old permanent keyboards are removed by
+replies and the inline grid contains product/category choices only. Product detail
+now has one Buy action and no channel, refresh, comparison or contact buttons.
+The separate Atlas offers keyboard button is removed. Large individual family
+lists retain plan pagination. Worker dry-run and all 210 tests pass after the
+correction. Telegram UI verified the direct custom offer and inline navigation
+at the bottom of the complete category list, with no category Next button.
+The subsequent Menu-only/one-Buy-button simplification passed all 55 affected
+sandbox, payment, shop and catalog tests. This latest revision stays local.
+Partner referrals/channel publishing are not connected. Production bot and webhook
+were untouched. See TELEGRAM.md.
+
+## First operator-defined custom offer — 2026-10-19
+
+The operator subsequently identified this as a ChatGPT offer and requested price
+first. The existing record was transactionally renamed and read-verified as
+“ChatGPT — 1 day”, retaining its ID, USD 1 price and one-day term. Sandbox offer
+buttons, overview and detail heading now read “USD 1 · ChatGPT — 1 day”. Existing
+saved order quotes are unchanged. All 12 focused sandbox-shop checks pass.
+
+The operator originally requested and named the custom offer “one day one USD”.
+It was created and read-verified in the existing Firebase products collection with
+price 1, currency USD, durationDays 1 and active true. Duplicate/conflicting-name
+checks preceded the write; no existing product was overwritten. This is a real
+operator-authorized product record, not test stock or a customer purchase. It has
+not been published to the live Telegram shop, assigned, purchased from a supplier
+or delivered. It is visible in the private sandbox bot for operator review.
+
+The local custom-product form now accepts name, selling price, currency and term
+in days. Currency is retained by createProduct. The local bundle was rebuilt and
+all 24 focused inventory/comparison checks passed. Latest code remains local.
+
+## Supplier-first local dashboard — 2026-10-19
+
+All 194 tests, Worker build and mocked runtime checks pass. The signed-in local
+dashboard is verified with real Canboso offers/costs. Supplier comparison is first;
+the numeric per-product stock breakdown is collapsed by default. Sidebar entry is
+Suppliers & inventory. No actual procurement, inventory/product write, customer
+message or production deployment was performed by the agent. Latest changes remain
+local for review; existing GitHub preview does not contain them yet.
+
+Operator rejected a product-definition-first workflow. Local dashboard and inventory
+now lead with real supplier offers, searchable per-plan availability and comparison
+of up to four selected offers. Missing source keys and unavailable acquisition
+prices are labeled; retail price is not substituted as supplier cost. Recording
+an already-completed manual supplier purchase verifies the offer server-side and
+links an internal product reference automatically. No supplier order/payment is
+invoked. Custom product creation is an optional special case only. Purchased units
+then link to customer paid purchases/subscription terms through the existing flow.
+See SUPPLIER_WORKFLOW.md. These changes remain local and unreleased.
+
+## Actual Firebase-connected local workspace — 2026-10-19
+
+Local login correction: existing Firebase auth domains include localhost, not the
+numeric 127.0.0.1 host. Entry/login redirects now use localhost and preserve query
+parameters. No auth configuration or security settings were changed.
+
+Latest validation: 191 tests pass; Worker build, mocked inventory and checkout
+runtime checks pass. The local service is running as a hidden background process;
+HTTP 200, real Firebase module and login redirect were verified. Anonymous inventory
+access is denied, and tests cover rejection of buyer claims and forged browser
+references. Searchable per-product stock breakdown is added. Changes remain local,
+not committed/pushed or deployed after the latest local-first clarification.
+
+Operator clarified shared Firebase from the start: APIs supply offers, owned units
+record actual procurement, and customer purchases/subscriptions link to those units.
+Local service now runs with actual Firebase browser auth and server-side operator
+token/reference validation at http://localhost:3199/. A read-only probe of the real
+inventory collection succeeded, the real Firebase module is served, and anonymous
+inventory reads return 401. No customer/inventory record was written for verification.
+
+Node and hosted Firestore adapters share server-only atlasInventoryState logical
+keys, hashed IDs, JSON payload and server timestamp format. This supersedes routine
+local-data promotion; records already in Firebase need no copying when releasing
+code. Hosted inventory remains undeployed and must use INVENTORY_STORAGE=firestore
+and the existing backed-up keyring to access the same data. Prior local test data
+was not migrated. Changes remain local for operator review. See LOCAL_WORKSPACE.md.
+
+## Inventory promotion direction — planned 2026-10-19
+
+The operator requires local inventory to remain usable during development and
+approved real local data to be promoted into Firebase when going live. The target
+is shared inventory business logic with local-file and server-only Firestore
+adapters, plus explicit dry-run/import/reconciliation. Code push is not data push.
+No automatic production upload, live import or storage migration has occurred.
+See `INVENTORY_PROMOTION_PLAN.md` for reference mapping, encryption-key continuity,
+trial-data exclusion, retry safety and rollback. This supersedes the earlier
+Worker-SQLite-only hosted inventory direction; that prepared code remains unchanged.
+
+## Local inventory review workspace — 2026-10-19
+
+The operator clarified local browser review should precede GitHub and deployment.
+A loopback workspace uses actual encrypted local inventory and real supplier reads,
+with separate browser-local customer/purchase test references. It has no fictional
+seed stock or production writes. See `LOCAL_WORKSPACE.md`. Latest changes remain
+local for review; no merge or deployment is implied.
+
 ## Visual stock overview and real catalog preview — 2026-10-19
 
 The feature branch compares owned availability, supplier breakdown and combined

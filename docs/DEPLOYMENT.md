@@ -1,5 +1,45 @@
 # Deployment
 
+## Readable Telegram product cards — 2026-10-19
+
+Worker d58fb2c9-f931-41ea-84e9-a73b1802f4e3 releases the requested product text
+polish. Clean-menu cards now separate heading, duration, availability, description
+and payment/delivery into short sections. Internal product reference IDs and the
+duplicate custom-offer price line are removed. Supplier descriptions remain escaped
+and bounded; unknown availability stays explicit. Single Buy and Menu are retained.
+All 34 existing bindings and live payment/order/partner settings are preserved.
+
+All 46 affected tests, Worker build, mocked checkout/review/delivery runtime and
+private-value scan pass. No order, payment, Hosting or data-schema change. Private
+rollback/source/settings receipts use `.worker-private/readable-card-*`; previous
+Worker is 1db2e38c-4679-4a39-8831-6be723c68e58.
+
+## Approved Telegram offer and layout release — 2026-10-19
+
+The operator explicitly accepted the sandbox presentation and requested deployment
+to the real bot. Worker `1db2e38c-4679-4a39-8831-6be723c68e58` enables
+TELEGRAM_CLEAN_MENU and publishes only products/atlas_one_day_one_usd through the
+explicit TELEGRAM_OWN_PRODUCT_IDS allowlist. Firebase supplies the current name,
+USD 1 price, currency and one-day term. No other private CRM products are published.
+
+All 32 prior production bindings, Durable Object/order state, partner tracking,
+manual payment settings and webhook were preserved; two publication/layout vars
+were added. Inventory and multi-supplier activation remain off. No Hosting,
+Firestore rules, channel posts or customer/order/payment data were changed.
+Buyer/default/private and operator command menus plus native Menu button were
+written and read-verified on the real bot; warranty is included. Existing messages
+keep old labels until users reopen Products or request /menu.
+
+Validation: all 215 tests, Worker dry-run, mocked actual Worker/SQLite checkout
+through approval/delivery (including the published custom offer) and private-value
+scans passed. Live health returns 200; the public supplier catalog still returns
+373 supplier products. Actual Telegram Web verification on Atlas Market Bot
+confirmed the published offer in Products, price-first USD 1 / one-day card,
+one Buy button and native Menu, without creating an order or payment.
+Private rollback/settings/source receipts are under
+`.worker-private/clean-shop-*`; previous live version is
+`94bcda47-3190-484e-a7d6-d063eb579b67`. No merge to master was performed.
+
 ## Branch-first workflow (2026-10-19)
 
 The operator requires local tests → online feature-branch preview → explicit

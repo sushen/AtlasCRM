@@ -1,5 +1,27 @@
 # Architecture
 
+## Explicit bot offer publication (released 2026-10-19)
+
+Worker ShopProducts projects only explicitly allowlisted Firebase product IDs and
+only name/price/currency/term/active fields through the existing server identity.
+The Telegram-only shop catalog appends these offers to supplier listings without
+altering the public supplier endpoint or exposing private CRM products wholesale.
+Purchase checks reread custom offers; existing ShopOrders/manual payment storage
+and immutable quotes remain authoritative. TELEGRAM_CLEAN_MENU selects the reviewed
+collapsible Menu, complete category grid and single Buy action in TelegramShop.
+Inventory and second-source rollout remain independently gated and disabled.
+
+## Shared Firebase inventory adapter (local implementation, 2026-10-19)
+
+The operator chose actual Firebase during local review. Server-owned
+atlasInventoryState records hold logical iv: keys with hash IDs and JSON payloads.
+Node Admin and Worker REST adapters share that format, transactional claims and
+server timestamps. Envelope encryption and operator-only endpoints remain intact.
+The loopback service can use real browser Firebase authentication and verify tokens
+and CRM references server-side; local browser references are ignored in this mode.
+Hosted rollout selects INVENTORY_STORAGE=firestore and reuses the keyring. No
+production inventory feature release or legacy ledger import has been performed.
+
 ## Private stock and multi-supplier preparation (2026-10-19)
 
 `server/inventory/` adds an encrypted owned-item ledger and atomic allocation in

@@ -1,5 +1,40 @@
 # Security and Privacy
 
+## Explicit Telegram product publication (released 2026-10-19)
+
+Only TELEGRAM_OWN_PRODUCT_IDS-approved product IDs can enter the real bot's catalog;
+active private CRM products are not implicitly published. The existing protected
+server identity reads name/price/currency/term/active through a Firestore field
+mask. Customer records, purchased credentials and acquisition costs are excluded.
+Invalid/inactive/removed offers fail closed. Current quote and active status are
+rechecked before purchase; no supplier purchase or automatic delivery is introduced.
+Existing manual payment/approval, order storage, access rules and webhook persist.
+
+## Private Telegram sandbox (local, 2026-10-19)
+
+The dedicated sandbox token stays in an ignored, access-restricted local file.
+Its separate runner verifies the expected bot identity, rejects a token matching
+the live token and refuses an existing webhook. Only configured numeric operators
+in matching private chats can trigger replies, with an outbound recipient guard.
+Firestore queries project product fields only; customer records and inventory
+credentials are not read. Real supplier retail listings are shown; acquisition
+costs never enter messages. Test orders, reference/evidence, review and delivery
+state use only the separate ignored sandbox file, with no live order access or
+Firebase writes. Checkout has no payable account, QR or transfer link. Polling
+state is separate from production. Add lead opens the local real Firebase CRM
+with an explicit real-save notice; the bot itself does not write CRM records.
+
+## Actual Firebase local review (2026-10-19)
+
+The local workspace's --firebase mode serves real Firebase browser auth. Local
+inventory requests require both the random loopback session and a Firebase token
+verified with revocation checks and strict atlasOperator:true. Server-side CRM
+reference reads replace browser-supplied test references. Shared atlasInventoryState
+has no browser allow rule; the server uses its existing protected Firebase identity.
+Saves in this mode affect real shared records, clearly labeled by the local banner.
+Encryption keys stay server-only. Read connectivity was checked without writes;
+hosted adapter/keyring activation remains pending release approval.
+
 ## Private inventory boundary (prepared 2026-10-19; disabled)
 
 Inventory routes require trusted Origin and a verified strict operator claim;

@@ -1,5 +1,84 @@
 # Atlas Market Telegram catalog
 
+## Reviewed layout and custom offer released to the real bot — 2026-10-19
+
+The real Atlas Market bot now uses the reviewed Menu-only navigation and one Buy
+action on product cards. Products lists all categories on one scrolling screen,
+with “USD 1 · ChatGPT — 1 day” directly below them. Large individual family lists
+retain their existing plan pagination. Existing messages are snapshots; /menu or
+reopening Products obtains the current layout.
+
+Product details now have spaced headings for duration, availability, description
+and payment/delivery. Custom offers show price once in the heading; internal
+product reference IDs are omitted. Supplier descriptions remain escaped/bounded
+and required order details are retained. Unknown stock is stated explicitly.
+The sandbox shares the same readable-card formatter after its next local restart.
+
+Worker ShopProducts reads only explicitly allowlisted Firebase product IDs using
+the existing server identity and a narrow field mask. Only the requested ChatGPT
+offer is published. Inactive/removed/invalid offers are hidden, and purchase checks
+reread the current offer before creating an order. Own prices receive no supplier
+markup; availability remains unknown and delivery is manual. This release uses the
+real existing payment/order flow, with saved quotes and review history preserved.
+The sandbox remains separate and cannot create live orders. See DEPLOYMENT.md.
+
+## Separate test bot — 2026-10-19
+
+At the operator's request, official BotFather created **Atlas Test**,
+[@AtlasCrmSandboxBot](https://t.me/AtlasCrmSandboxBot). Telegram getMe verified
+that identity; getWebhookInfo confirmed no webhook is configured. Its token is
+stored only in ignored `.worker-private/telegram-test.env`, with restricted local
+file permissions. Never commit the token or substitute the live bot's token.
+
+The local runner reuses TelegramShop and ManualCheckoutConversation behind a
+private operator boundary. Products combines the actual supplier catalog with
+fresh active Firebase offers. Products lists custom offer buttons directly below
+all category buttons, including “ChatGPT — 1 day” (originally “one day one USD”).
+Its existing Firebase ID, USD 1 price and one-day term are retained. Offer buttons,
+overview and detail heading use “USD 1 · ChatGPT — 1 day”. Main category
+pagination is removed; individual large plan lists retain their existing paging.
+General navigation lives in Telegram's collapsible Menu, including Products,
+Profile, History, Support, Warranty and operator actions. Replies remove the old
+persistent keyboard so it cannot obscure the conversation; general navigation is
+also removed from the product grid. Old inline navigation messages remain handled.
+Product detail cards contain one **Buy** action, with no channel, refresh, compare
+or contact buttons; stock/price refresh when the product is reopened. Out-of-stock
+or invalid-price products do not receive Buy. This still opens isolated test checkout.
+The separate Atlas offers keyboard button is removed; old messages using it still
+reopen Products. Custom selling prices get no supplier markup
+and have unknown availability until fulfillment is arranged. Read-only verification
+found 373 supplier listings plus the custom offer. No stock counts are invented.
+
+Profile/history, test order requests, reference/evidence submission, admin review,
+request-information and delivery queues use separate ignored
+`.worker-private/telegram-test-orders.json`; no live orders are imported or changed.
+Test checkout has no payable destination, payment QR or transfer link and asks for
+made-up references. Every reply carries a test banner. Support/channel links stay
+in the test bot; Add lead opens localhost and warns that deliberate CRM saves use
+real Firebase. Partner referrals and channel publishing are not connected. Optional
+checkout presentation overrides preserve production defaults.
+
+Only configured numeric operators in matching private chats may access it; groups
+and other accounts receive nothing. An outbound guard restricts recipients too.
+Firebase reads project product fields only; customer records, inventory credentials
+and supplier costs do not enter bot messages. This is an operator preview, not
+publication to the live shop.
+
+Run `npm run telegram:sandbox` with the existing private `.env` and separate
+test-token file; `--check` on the runner verifies identity/Firebase without sending
+messages. The runner refuses any other bot identity, a production-token match or
+an existing webhook. It uses separate ignored polling state and preserves offsets
+before replies. Run only one sandbox poller. It must stay running on this computer
+for replies; no hosted test deployment exists. The production webhook is unchanged.
+Run `npm run test:sandbox` for private catalog/full-shop isolation tests. All 210
+project tests pass, including an isolated order → reference → review → approval →
+manual delivery workflow and existing production checkout regressions. Optional
+private command-menu setup failures do not prevent typed-command handling.
+The Telegram API helper now permits the four command/menu setup/readback methods;
+the runner verified both the operator command list and native Menu button by
+reading them back. Earlier missing-menu reports were caused by those methods
+being rejected locally before Telegram received them. No live bot settings changed.
+
 ## Private operator Add lead entry (released 2026-10-19)
 
 Only configured shop admins in matching private chats receive **➕ Add lead** in

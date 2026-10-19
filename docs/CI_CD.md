@@ -1,5 +1,9 @@
 # Branch review and release workflow
 
+Latest clarification: private inventory and supplier controls should first be
+reviewed at localhost using the actual local backend, not a GitHub-only preview.
+See `LOCAL_WORKSPACE.md`. This does not authorize a production release.
+
 Operator decision, 2026-10-19: test locally, test the feature branch online, then
 merge to master only after explicit acceptance. No direct production deployment
 is part of pushing a branch. Earlier manual releases remain historical facts.
@@ -20,6 +24,8 @@ branches, and PRs targeting master. It installs the lockfile with lifecycle scri
 disabled, runs the complete test suite, builds the Worker in dry-run mode, runs
 mocked inventory/checkout workerd smoke checks, builds the isolated browser preview
 and checks its data/network isolation. Actions are pinned to commit SHAs.
+Checkout smoke covers both the legacy presentation and the deployed clean-menu
+layout with an explicitly published Firestore offer; all outbound services are mocked.
 
 Every successful check run uploads a preview artifact. Pushes to the current
 `codex/quick-add-lead` review branch additionally deploy that artifact to GitHub

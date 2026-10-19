@@ -17,11 +17,14 @@ import {combinedCatalog} from '../server/inventory/combined-catalog.mjs';
 import {supplierStates} from '../server/inventory/suppliers.mjs';
 import {CATALOG_DEFAULT_MARKUP_PERCENT,CATALOG_STOCK_MARKUP_TIERS} from '../js/utils/catalog-pricing.js';
 import {attachSupplierOverview} from '../server/inventory/stock-overview.mjs';
+import {WorkerInventoryStorage} from './inventory-storage.mjs';
+import {loadSupplierOffers} from '../server/inventory/supplier-offers.mjs';
+import {ShopProducts} from './shop-products.mjs';
 
 const reply = (data, status=200) => Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
 // Single coordinator per Atlas Worker: cache and replay/disable state survive eviction.
 export class AtlasCoordinator {
-  constructor(state, env) { this.state=state; this.env=env; this.tail=Promise.resolve();this.partnerMirror=new PartnerFirestore(env); }
+  constructor(state, env) { this.state=state; this.env=env; this.tail=Promise.resolve();this.partnerMirror=new PartnerFirestore(env);this.inventoryStorage=env.INVENTORY_STORAGE==='firestore'?new WorkerInventoryStorage(env):state.storage; }
   fetch(request) {
     return this.serialize(()=>this.handle(request));
   }
@@ -41,7 +44,7 @@ export class AtlasCoordinator {
   async enabled() { return (await this.state.storage.get('bot-enabled')) ?? (this.env.TELEGRAM_BOT_ENABLED === 'true'); }
   supplierReadiness(){return {canboso:Boolean(supplierConfiguration(this.env).key),nam:this.env.MULTI_SUPPLIER_ENABLED==='true'&&Boolean(this.env.NAM_RESELLER_TOKEN)&&Boolean(this.env.NAM_RESELLER_CURRENCY)};}
   async catalog() {
-    const states=await supplierStates(this.state.storage,this.supplierReadiness()),currentEnabled=states.find(s=>s.id==='canboso').enabled,namEnabled=states.find(s=>s.id==='nam').enabled;
+    const states=await supplierStates(this.inventoryStorage,this.supplierReadiness()),currentEnabled=states.find(s=>s.id==='canboso').enabled,namEnabled=states.find(s=>s.id==='nam').enabled;
     const empty={products:[],fetchedAt:new Date().toISOString(),storefront:storefrontSettings(this.env),pricing:{mode:'stock_tiers',defaultMarkupPercent:CATALOG_DEFAULT_MARKUP_PERCENT,tiers:CATALOG_STOCK_MARKUP_TIERS}};
     this.overviewSources=states.map(s=>({...s,products:[]}));
     if(!currentEnabled&&!namEnabled)return empty;
@@ -50,7 +53,7 @@ export class AtlasCoordinator {
       // NAM requires fresh no-store catalog reads. Never use the legacy six-hour fallback.
       const current=new SupplierCatalog({...supplierConfiguration(this.env),settings:storefrontSettings(this.env)});
       const nam=namEnabled?new NamCatalog({token:this.env.NAM_RESELLER_TOKEN,currency:this.env.NAM_RESELLER_CURRENCY}):null;
-      const [catalog,newOffers,mappings]=await Promise.all([currentEnabled?current.list():Promise.resolve(empty),namEnabled?nam.offers():Promise.resolve([]),this.state.storage.list({prefix:'iv:map:',limit:501})]);
+      const [catalog,newOffers,mappings]=await Promise.all([currentEnabled?current.list():Promise.resolve(empty),namEnabled?nam.offers():Promise.resolve([]),this.inventoryStorage.list({prefix:'iv:map:',limit:501})]);
       if(mappings.size>500)throw Error('Supplier mapping limit exceeded.');
       const references=new InventoryReferences(this.env),maps=[...mappings.values()].filter(m=>namEnabled&&m.sourceId==='nam'||currentEnabled&&m.sourceId==='canboso');
       const products=await Promise.all([...new Set(maps.filter(m=>m.enabled).map(m=>m.productId))].map(id=>references.read('products',id)));
@@ -62,8 +65,8 @@ export class AtlasCoordinator {
     }
     const saved=await this.state.storage.get('catalog');
     const track=data=>{this.overviewSources=states.map(s=>({...s,products:s.id==='canboso'?data.products:[]}));return data;};
-    if(saved?.until>Date.now()) return track(saved.data);
-    const fallback=()=>saved?.until>Date.now()-6*3600000?track({...saved.data,stale:true,storefront:storefrontSettings(this.env)}):null;
+    if(this.env.INVENTORY_STORAGE!=='firestore'&&saved?.until>Date.now()) return track(saved.data);
+    const fallback=()=>this.env.INVENTORY_STORAGE!=='firestore'&&saved?.until>Date.now()-6*3600000?track({...saved.data,stale:true,storefront:storefrontSettings(this.env)}):null;
     const cooldown=await this.state.storage.get('supplier-cooldown') || 0;
     if(cooldown>Date.now()) {const data=fallback();if(data)return data;throw Error('supplier_cooldown');}
     const supplier=supplierConfiguration(this.env);
@@ -89,6 +92,20 @@ export class AtlasCoordinator {
       if(!stock.available||stock.refreshCatalog)throw Error('Supplier stock changed. Refresh the catalog before creating an order.');
     }
   }
+  async shopCatalog(){
+    if(!this.env.TELEGRAM_OWN_PRODUCT_IDS)return this.catalog();
+    const [catalog,own]=await Promise.all([this.catalog(),new ShopProducts(this.env).list()]);
+    return {...catalog,products:[...catalog.products,...own]};
+  }
+  async verifyShopStock(product){
+    if(!product)throw Error('Product unavailable');
+    if(product.id.startsWith('own_')){
+      const current=(await new ShopProducts(this.env).list()).find(p=>p.id===product.id);
+      if(!current||current.price!==product.price||current.currency!==product.currency)throw Error('Offer changed');
+      return;
+    }
+    return this.verifyCatalogStock(product);
+  }
   async rate(key, maximum) {
     await this.scheduleCleanup();
     const now=Date.now(); const saved=await this.state.storage.get(key);
@@ -101,12 +118,14 @@ export class AtlasCoordinator {
     if(path==='/inventory'){
       if(this.env.INVENTORY_ENABLED!=='true')return reply({code:'inventory_disabled'},503);
       try{
-        const {claims,command,summary,value,query}=await request.json();
+        const {claims,command,offers,summary,value,query}=await request.json();
         if(claims?.atlasOperator!==true||!claims.sub)return reply({code:'operator_required'},403);
         if(!await this.rate('inventory-global',100)||!await this.rate('client:inventory:'+claims.sub,40))return reply({message:'Too many inventory requests. Retry shortly.'},429);
-        const inventory=new InventoryProgram(this.state.storage,{keyring:this.env.INVENTORY_KEYRING,references:new InventoryReferences(this.env),supplierReadiness:this.supplierReadiness()});
+        if(offers)return reply(await loadSupplierOffers(this.inventoryStorage,this.env));
+        const inventory=new InventoryProgram(this.inventoryStorage,{keyring:this.env.INVENTORY_KEYRING,references:new InventoryReferences(this.env),supplierReadiness:this.supplierReadiness(),
+          resolveSupplierOffer:async(sourceId,offerId)=>(await loadSupplierOffers(this.inventoryStorage,this.env)).offers.find(o=>o.sourceId===sourceId&&o.id===offerId)});
         if(summary){
-          const owned=await inventory.summary(claims),states=await supplierStates(this.state.storage,this.supplierReadiness());
+          const owned=await inventory.summary(claims),states=await supplierStates(this.inventoryStorage,this.supplierReadiness());
           return reply(await attachSupplierOverview(owned,{states,loadCatalog:()=>this.catalog(),getSources:()=>this.overviewSources}));
         }
         return reply(command?await inventory.command(claims,value):await inventory.list(claims,query));
@@ -182,7 +201,7 @@ export class AtlasCoordinator {
         const partners=partnerEnabled?new PartnerProgram(this.state.storage,{secret:this.env.PARTNER_HASH_SECRET}):null;
         const orders=new ShopOrders(this.state.storage,{adminIds,partnerSecret:partnerEnabled?this.env.PARTNER_HASH_SECRET:''});
         const payments=new BinanceManualPaymentProvider(paymentConfiguration(this.env),orders);
-        const shop=this.env.TELEGRAM_SHOP_ENABLED==='true'?new TelegramShop({api,orders,payments,partners,catalog:{list:()=>this.catalog(),verifyStock:product=>this.verifyCatalogStock(product)},adminIds,
+        const shop=this.env.TELEGRAM_SHOP_ENABLED==='true'?new TelegramShop({api,orders,payments,partners,catalog:{list:()=>this.shopCatalog(),verifyStock:product=>this.verifyShopStock(product)},adminIds,cleanMenu:this.env.TELEGRAM_CLEAN_MENU==='true',
           supportUrl:this.env.TELEGRAM_SHOP_SUPPORT_URL||'',channelUrl:storefrontSettings(this.env).telegramUrl,username:this.env.TELEGRAM_BOT_USERNAME||'AtlasCrmMarketBot'}):null;
         if(!shop||!await shop.handle(update))await bot.handleUpdate(update);
       }catch(error){

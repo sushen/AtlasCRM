@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 // No .env/.dev.vars loaded; every outbound request is intercepted locally.
 const secret='fictional-smoke-secret-over-thirty-two-characters';
 const manual=process.argv.includes('--manual-payments');
+const clean=process.argv.includes('--clean-shop');
 let supplierCalls=0,telegramCalls=0;
 const telegramPayloads=[];
 const pair=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
@@ -15,11 +16,13 @@ const now=Math.floor(Date.now()/1000);
 const input=encode({alg:'RS256',kid:jwk.kid})+'.'+encode({aud:'smoke-project',iss:'https://securetoken.google.com/smoke-project',sub:'fictional-user',iat:now-10,auth_time:now-20,exp:now+3600});
 const token=input+'.'+Buffer.from(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',pair.privateKey,new TextEncoder().encode(input))).toString('base64url');
 const source=await readFile(join(import.meta.dirname,'../.worker-build/index.js'),'utf8');
+const fixturePrivateKey=Buffer.from(await crypto.subtle.exportKey('pkcs8',pair.privateKey)).toString('base64');
 const mf=new Miniflare(convertV4MiniflareOptions({workers:[{name:'atlas-smoke',modules:true,script:source,
   compatibilityDate:'2025-10-01',durableObjects:{ATLAS_COORDINATOR:{className:'AtlasCoordinator',useSQLite:true}},
   bindings:{CANBOSS_BUYER_API_KEY:'fictional',TELEGRAM_BOT_TOKEN:'123:fictional',TELEGRAM_WEBHOOK_SECRET:secret,
     ATLAS_ADMIN_TOKEN:secret,TELEGRAM_CATALOG_CHAT_IDS:'-123',CATALOG_ALLOWED_ORIGINS:'https://atlascrm-c5722.web.app',FIREBASE_PROJECT_ID:'smoke-project',
     TELEGRAM_SHOP_ENABLED:'true',TELEGRAM_SHOP_ADMIN_IDS:'99',TELEGRAM_SHOP_SUPPORT_URL:'https://t.me/FictionalAdmin',
+    ...(clean?{TELEGRAM_CLEAN_MENU:'true',TELEGRAM_OWN_PRODUCT_IDS:'fixture_own',PARTNER_FIRESTORE_SERVICE_ACCOUNT:JSON.stringify({project_id:'smoke-project',client_email:'fixture@smoke-project.iam.gserviceaccount.com',private_key:'-----BEGIN PRIVATE KEY-----\n'+fixturePrivateKey+'\n-----END PRIVATE KEY-----'})}:{}),
     ...(manual?{MANUAL_CHECKOUT_ENABLED:'true',BINANCE_PAY_UID:'987654321',BINANCE_PAY_NAME:'FictionalReceiver',
       BINANCE_PAY_QR_FILE_ID:'fixture_receiving_qr_123456',PAYMENT_USD_USDT_RATE:'1'}:{})},
   outboundService:async request=>{
@@ -27,6 +30,8 @@ const mf=new Miniflare(convertV4MiniflareOptions({workers:[{name:'atlas-smoke',m
     if(url.origin==='https://canboso.com') {supplierCalls++;return Response.json({success:true,products:[{productId:'smoke_product',name:'Canva Pro',price:{amount:10,currency:'USD'},availability:{available:5}}]});}
     if(url.origin==='https://api.telegram.org') {telegramCalls++;telegramPayloads.push(await request.json());return Response.json({ok:true,result:{message_id:1}});}
     if(url.origin==='https://www.googleapis.com')return Response.json({keys:[jwk]},{headers:{'Cache-Control':'max-age=3600'}});
+    if(clean&&url.origin==='https://oauth2.googleapis.com')return Response.json({access_token:'fixture_access',expires_in:3600});
+    if(clean&&url.origin==='https://firestore.googleapis.com'&&url.pathname.endsWith('/products/fixture_own'))return Response.json({fields:{name:{stringValue:'ChatGPT — 1 day'},active:{booleanValue:true},price:{integerValue:'1'},currency:{stringValue:'USD'},durationDays:{integerValue:'1'}}});
     throw Error('Unexpected outbound request in smoke test');
   }}]}));
 try {
@@ -55,8 +60,9 @@ try {
   assert.ok(telegramPayloads.some(p=>p.photo?.includes('domain=canva.com')));
   await shopUpdate(buyerCallback(1,'product:smoke_product',8));
   assert.equal(telegramPayloads.at(-1).parse_mode,'HTML');
-  assert.match(telegramPayloads.at(-1).text,/<b>Product details<\/b>/);
-  assert.ok(telegramPayloads.at(-1).reply_markup.inline_keyboard.flat().some(b=>b.callback_data==='refresh:smoke_product'));
+  assert.match(telegramPayloads.at(-1).text,clean?/<b>📝 About this product<\/b>/:/<b>Product details<\/b>/);
+  if(clean)assert.deepEqual(telegramPayloads.at(-1).reply_markup.inline_keyboard,[[{text:'Buy',callback_data:'buy:smoke_product'}]]);
+  else assert.ok(telegramPayloads.at(-1).reply_markup.inline_keyboard.flat().some(b=>b.callback_data==='refresh:smoke_product'));
   await shopUpdate(buyerCallback(1,'refresh:smoke_product',9));
   assert.match(telegramPayloads.at(-1).text,/\$12.00/);
   await shopUpdate(buyerCallback(1,'buy:smoke_product',10));
@@ -84,6 +90,16 @@ try {
     await shopUpdate(buyerCallback(2,'review:approve:'+order,12));assert.match(telegramPayloads.at(-1).text,/Admin access/);
     await shopUpdate(buyerCallback(99,'review:approve:'+order,13));assert.match(telegramPayloads.at(-1).text,/Payment confirmed by admin/);
     await shopUpdate(buyerMessage(99,'/fulfill '+order+' Delivered separately.',14));assert.match(telegramPayloads.at(-1).text,/Fulfilled by admin/);
+  }
+  if(clean){
+    await shopUpdate(buyerMessage(300,'/menu',50));
+    assert.ok(telegramPayloads.some(p=>p.chat_id===300&&p.reply_markup?.remove_keyboard));
+    assert.ok(telegramPayloads.at(-1).reply_markup.inline_keyboard.flat().some(b=>b.text==='USD 1 · ChatGPT — 1 day'));
+    await shopUpdate(buyerCallback(300,'product:own_fixture_own',51));
+    assert.match(telegramPayloads.at(-1).text,/<b>USD 1 · ChatGPT — 1 day<\/b>/);
+    assert.deepEqual(telegramPayloads.at(-1).reply_markup.inline_keyboard,[[{text:'Buy',callback_data:'buy:own_fixture_own'}]]);
+    await shopUpdate(buyerCallback(300,'buy:own_fixture_own',52));
+    assert.ok(telegramPayloads.some(p=>p.chat_id===300&&p.text?.includes('<code>1.00</code> <b>USDT</b>')));
   }
   const countBefore=telegramCalls;
   assert.equal((await call('/api/admin/bot-state',{method:'POST',headers:auth,body:'{"enabled":false}'})).status,200);

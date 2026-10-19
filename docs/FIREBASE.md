@@ -1,5 +1,18 @@
 # Firebase
 
+## Local workspace with shared Firebase (2026-10-19)
+
+`npm run preview:workspace` now builds real Firebase browser authentication and
+starts a loopback server using the existing protected CLI/ADC login. An explicit
+private supplier env path can be passed to `server/local-workspace.mjs` with
+`--firebase`. Actual inventory data uses server-owned atlasInventoryState with
+operator-token/revocation checks; browser direct access remains denied by default.
+The existing customers/products/purchases/subscriptions stay in their current
+collections. No local-to-live copy is needed for records saved to shared Firebase.
+The hosted inventory adapter must be released with INVENTORY_STORAGE=firestore
+and the same backed-up keyring. See LOCAL_WORKSPACE.md; that hosted rollout has
+not occurred. Separate file-mode testing uses `npm run preview:workspace:isolated`.
+
 ## Partner projections (released 2026-10-16)
 
 Partner tracking uses the existing Firebase Auth project and additive Firestore

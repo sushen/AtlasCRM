@@ -12,7 +12,7 @@ const publicUnit=unit=>{
   return {id,productId,productName,source,cost,currency,acquiredAt,expiresAt,state,createdAt,updatedAt,...(customerId?{customerId,purchaseId,assignedAt}:{}),...(deliveredAt?{deliveredAt}:{}),...(retiredAt?{retiredAt}:{})};
 };
 export class InventoryProgram {
-  constructor(storage,{keyring,references,now=Date.now,today=day,supplierReadiness={canboso:true,nam:false}}={}){this.storage=storage;this.vault=new InventoryVault(keyring);this.references=references;this.now=now;this.today=today;this.supplierReadiness=supplierReadiness;}
+  constructor(storage,{keyring,references,resolveSupplierOffer,now=Date.now,today=day,supplierReadiness={canboso:true,nam:false}}={}){this.storage=storage;this.vault=new InventoryVault(keyring);this.references=references;this.resolveSupplierOffer=resolveSupplierOffer;this.now=now;this.today=today;this.supplierReadiness=supplierReadiness;}
   authorize(claims){if(claims?.atlasOperator!==true||!claims.sub)fail('Operator access required.');}
   async list(claims,{cursor='',purchaseId=''}={}){
     this.authorize(claims);if(cursor&&!/^iv:unit:[A-Za-z0-9_-]{1,100}$/.test(cursor))fail('Invalid page cursor.');
@@ -80,17 +80,32 @@ export class InventoryProgram {
       });
     }
     if(action==='receive'){
-      const productId=requireId(input.productId,'product'),product=await this.references.read('products',productId);
-      if(!product||product.active===false)fail('Choose an active saved CRM product.');
-      const source=text(input.source,'the supplier/source name'),credentials=text(input.credentials,'delivery credentials',12000);
+      const credentials=text(input.credentials,'delivery credentials',12000);
       const cost=String(input.cost??'').trim(),currency=input.currency;
       if(!/^\d{1,9}(\.\d{1,6})?$/.test(cost)||!['BDT','USD','USDT'].includes(currency))fail('Enter a valid acquisition cost and currency.');
       if(!date(input.acquiredAt)||input.expiresAt&&(!date(input.expiresAt)||input.expiresAt<input.acquiredAt))fail('Enter valid acquisition and stock expiry dates.');
+      let productId,product,source,sourceId=null,offerId=null;
+      if(input.sourceId||input.offerId){
+        sourceId=requireId(input.sourceId,'supplier');offerId=requireId(input.offerId,'supplier offer');
+        if(!['canboso','nam'].includes(sourceId)||!this.resolveSupplierOffer||!this.references.ensureSupplierProduct)fail('Supplier purchase recording is not configured on this backend.');
+        if(input.confirmPurchased!==true)fail('Confirm you already purchased this item from the supplier. Atlas does not buy it for you.');
+        const offer=await this.resolveSupplierOffer(sourceId,offerId);if(!offer)fail('Supplier offer could not be verified. Refresh the supplier list.');
+        if(offer.currency!==currency)fail('Use the supplier offer currency for this acquisition.');
+        source=sourceId==='canboso'?'Canboso':'NAM';
+        const mapping=await this.storage.get('iv:map:'+sourceId+':'+offerId);
+        if(mapping?.enabled){productId=mapping.productId;product=await this.references.read('products',productId);}
+        else{
+          const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(sourceId+':'+offerId));
+          productId='supplier_'+sourceId+'_'+[...new Uint8Array(hash)].map(v=>v.toString(16).padStart(2,'0')).join('').slice(0,32);
+          product=await this.references.ensureSupplierProduct(productId,{name:offer.name,sourceId,offerId});
+        }
+      }else{productId=requireId(input.productId,'product');product=await this.references.read('products',productId);source=text(input.source,'the supplier/source name');}
+      if(!product||product.active===false)fail('Choose an active product or supplier offer.');
       const id=requestId,fingerprint=await this.vault.fingerprint(credentials),sealed=await this.vault.encrypt(credentials,id+':'+productId);
       return this.storage.transaction(async tx=>{
         const receipt=await tx.get('iv:receipt:'+requestId);if(receipt){if(receipt.digest!==digest||receipt.actor!==claims.sub)fail('Save request conflict.');return receipt.result;}
         if(await tx.get('iv:fingerprint:'+fingerprint))fail('These credentials are already recorded in inventory.');
-        const unit={id,productId,productName:text(product.name,'product name'),source,cost,currency,acquiredAt:input.acquiredAt,expiresAt:input.expiresAt||null,state:'available',createdAt:this.now(),updatedAt:this.now()};
+        const unit={id,productId,productName:text(product.name,'product name'),source,...(sourceId?{sourceId,offerId}:{}),cost,currency,acquiredAt:input.acquiredAt,expiresAt:input.expiresAt||null,state:'available',createdAt:this.now(),updatedAt:this.now()};
         await tx.put('iv:unit:'+id,unit);await tx.put('iv:secret:'+id,sealed);await tx.put('iv:fingerprint:'+fingerprint,{unitId:id});
         await this.audit(tx,claims,'stock_received',id,requestId);
         const result={unit:publicUnit(unit)};await tx.put('iv:receipt:'+requestId,{actor:claims.sub,digest,result});return result;

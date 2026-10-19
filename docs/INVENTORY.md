@@ -1,5 +1,16 @@
 # Private owned inventory and combined supplier catalog
 
+## Latest operator direction: supplier-first, shared Firebase
+
+See SUPPLIER_WORKFLOW.md. The main dashboard/workspace starts with actual supplier
+offers and comparison, then manual procurement receipt and customer assignment.
+Operators do not create products for normal supplier offers. Internal product
+references are linked automatically only when recording a confirmed purchase;
+custom definitions are optional special cases. Shared Firebase is the chosen
+inventory persistence for local/live code; the SQLite/file descriptions below are
+earlier prepared/isolated-test adapters, not the selected shared-data direction.
+Hosted rollout remains pending. See LOCAL_WORKSPACE.md.
+
 Prepared 2026-10-19. Not deployed or enabled by this task. Previously released
 phone/username leads and customer purchases remain live.
 

@@ -98,7 +98,7 @@ export class TelegramApi {
     this.blockedUntil = 0;
   }
   async call(method, data = {}, signal) {
-    if (!['getMe', 'getWebhookInfo', 'getUpdates', 'sendMessage', 'sendPhoto', 'editMessageText', 'answerCallbackQuery'].includes(method)) throw new TelegramApiError('telegram_method_not_allowed');
+    if (!['getMe', 'getWebhookInfo', 'getUpdates', 'sendMessage', 'sendPhoto', 'editMessageText', 'answerCallbackQuery', 'setMyCommands', 'getMyCommands', 'setChatMenuButton', 'getChatMenuButton'].includes(method)) throw new TelegramApiError('telegram_method_not_allowed');
     if (Date.now() < this.blockedUntil) throw new TelegramApiError('telegram_rate_limited', Math.ceil((this.blockedUntil - Date.now()) / 1000));
     try {
       const upload=data.photo instanceof Blob;

@@ -1,6 +1,7 @@
 import {inventoryFetch} from '../services/inventory-api.js';
 import {businessDate} from '../utils/customer-sales.js';
 import {customerIdentity} from '../utils/customer-identity.js';
+import {renderSupplierComparison} from './supplier-comparison.js';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const options=(rows,label)=>rows.map(row=>`<option value="${esc(row.id)}">${esc(label(row))}</option>`).join('');
 export function showInventoryCredentials(unitId,user,{api=inventoryFetch}={}){
@@ -34,11 +35,12 @@ export async function renderInventory(root,{user,listProducts,createProduct,list
   let listing,products,customers,purchases;
   try{[listing,products,customers,purchases]=await Promise.all([api('/api/inventory/list',{user}),listProducts(),listCustomers(),listPurchases()]);}
   catch(error){root.innerHTML=`<h1>Private inventory</h1><p class="error" role="alert">${esc(error.message||'Inventory is unavailable.')}</p><p class="muted">No credentials are stored in this browser. Your public catalog is unchanged.</p>`;return;}
-  root.innerHTML=`<div class="page-heading"><div><h1>Private inventory</h1><p class="muted">Stock you have purchased. Supplier availability in the public shop is separate.</p></div></div>
+  root.innerHTML=`<div class="page-heading"><div><h1>Suppliers and purchased items</h1><p class="muted">Compare supplier offers, buy manually, then record what you received and assign it to a customer.</p></div></div>
     <p data-inventory-status role="status" aria-live="polite"></p>
+    <section class="card card-pad" data-supplier-comparison></section>
     <section class="card card-pad"><h2>Supplier switches</h2><p class="muted">Only enabled suppliers contribute products, prices and availability to the shop. Your owned items stay here when a supplier is off.</p>${(listing.suppliers||[]).map(s=>`<div class="list-item"><div><strong>${esc(s.name)}</strong><div class="muted small">${s.enabled?'On':'Off'}${!s.ready?' · configuration needed before enabling':''}</div></div><button class="button" data-supplier="${esc(s.id)}" data-enabled="${!s.enabled}" ${!s.enabled&&!s.ready?'disabled':''}>Turn ${s.enabled?'off':'on'}</button></div>`).join('')}</section>
-    <details class="card card-pad"><summary>Create a saved product</summary><form data-product-form class="inventory-form"><label>Product and plan name<input name="name" maxlength="200" required></label><button class="button">Create product</button></form></details>
-    <details class="card card-pad"><summary>Receive one owned stock item</summary><form data-receive class="inventory-form">
+    <details class="card card-pad"><summary>Add your own product or plan</summary><p class="muted small">Set the selling price and duration for your own Atlas offer. This does not add purchased inventory or publish a Telegram message.</p><form data-product-form class="inventory-form"><label>Product and plan name<input name="name" maxlength="200" required></label><div class="sales-fields"><label>Selling price<input name="price" type="number" min="0" step="0.01" required></label><label>Currency<select name="currency"><option>USD</option><option>BDT</option><option>USDT</option></select></label><label>Duration (days)<input name="durationDays" type="number" min="1" max="36500" step="1" required></label></div><button class="button">Save custom product</button></form></details>
+    <details class="card card-pad"><summary>Record a purchase for an existing custom product</summary><form data-receive class="inventory-form">
     <label>Saved CRM product<select name="productId" required><option value="">Choose a product and plan</option>${options(products.filter(p=>p.active!==false),p=>p.name)}</select></label>
     <label>Supplier / source name<input name="source" maxlength="200" required placeholder="Source label only"></label>
     <div class="sales-fields"><label>Acquisition cost<input name="cost" inputmode="decimal" required pattern="[0-9]{1,9}([.][0-9]{1,6})?"></label><label>Currency<select name="currency"><option>BDT</option><option>USD</option><option>USDT</option></select></label>
@@ -56,7 +58,7 @@ export async function renderInventory(root,{user,listProducts,createProduct,list
     <label>Supplier's product ID<input name="offerId" required pattern="[A-Za-z0-9_-]{1,100}"></label><label>Underlying stock pool ID<input name="stockPoolId" required pattern="[A-Za-z0-9_-]{1,100}" placeholder="Use the same ID for offers sharing stock"></label>
     <label>Status<select name="enabled"><option value="true">Enabled mapping</option><option value="false">Disabled mapping</option></select></label><button class="button">Save mapping</button></form>
     <div>${(listing.mappings||[]).map(m=>`<p>${esc(m.productName)} ← ${esc(m.sourceId)} / ${esc(m.offerId)} · Pool ${esc(m.stockPoolId)} · ${m.enabled?'enabled':'disabled'}</p>`).join('')||'<p>No supplier mappings saved.</p>'}</div>${listing.mappingsTruncated?'<p>More than 100 mappings exist; this view shows the first 100.</p>':''}</details>
-    <section class="card card-pad"><h2>Owned items</h2><div data-units></div><button class="button" data-more ${listing.cursor?'':'hidden'}>Load more owned items</button></section>`;
+    <section class="card card-pad"><h2>Items already purchased from suppliers</h2><div data-units></div><button class="button" data-more ${listing.cursor?'':'hidden'}>Load more owned items</button></section>`;
   const status=root.querySelector('[data-inventory-status]'),units=[...listing.units];let cursor=listing.cursor;
   const reload=()=>renderInventory(root,{user,listProducts,createProduct,listCustomers,listPurchases,context,api});
   root.querySelectorAll('[data-supplier]').forEach(button=>button.onclick=async()=>{
@@ -66,7 +68,7 @@ export async function renderInventory(root,{user,listProducts,createProduct,list
   });
   root.querySelector('[data-product-form]').onsubmit=async event=>{
     event.preventDefault();const form=event.currentTarget,button=form.querySelector('button');button.disabled=true;
-    try{await createProduct({name:form.elements.namedItem('name').value.trim(),active:true});await reload();}catch{status.textContent='Could not create product. Check your connection before retrying.';button.disabled=false;}
+    try{await createProduct({name:form.elements.namedItem('name').value.trim(),price:Number(form.elements.namedItem('price').value),currency:form.elements.namedItem('currency').value,durationDays:Number(form.elements.namedItem('durationDays').value),active:true});await reload();}catch{status.textContent='Could not create product. Check your connection before retrying.';button.disabled=false;}
   };
   const assign=root.querySelector('[data-assign]'),field=(form,name)=>form.querySelector(`[name="${name}"]`);
   const unitOptions=()=>{
@@ -105,4 +107,5 @@ export async function renderInventory(root,{user,listProducts,createProduct,list
     event.target.disabled=true;try{const next=await api('/api/inventory/list?cursor='+encodeURIComponent(cursor),{user});units.push(...next.units);cursor=next.cursor;draw();unitOptions();event.target.hidden=!cursor;}catch(error){status.textContent=error.message;}finally{event.target.disabled=false;}
   };
   draw();
+  await renderSupplierComparison(root.querySelector('[data-supplier-comparison]'),{user,api,onRecorded:reload});
 }

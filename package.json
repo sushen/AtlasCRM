@@ -9,8 +9,12 @@
     "leads:local": "node server/lead-bridge.mjs",
     "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/whatsapp.ps1 start",
     "preview": "node server/index.mjs --static-only",
+    "preview:workspace": "node scripts/build-local-workspace.mjs --firebase && node server/local-workspace.mjs --firebase",
+    "preview:workspace:isolated": "node scripts/build-local-workspace.mjs && node server/local-workspace.mjs",
     "preview:catalog": "node --env-file=.env server/catalog-preview.mjs",
     "telegram:catalog": "node --env-file=.env server/telegram-catalog-runner.mjs",
+    "telegram:sandbox": "node --env-file=.env --env-file=.worker-private/telegram-test.env server/telegram-sandbox-runner.mjs",
+    "test:sandbox": "node --test tests/telegram-sandbox.test.mjs tests/telegram-sandbox-shop.test.mjs",
     "telegram:check": "node --env-file=.env server/telegram-catalog-check.mjs",
     "test:catalog": "node --test tests/catalog.test.mjs",
     "test:worker": "node --test tests/worker.test.mjs tests/business-report.test.mjs tests/partners.test.mjs",
@@ -30,7 +34,7 @@
     "whatsapp:send": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/whatsapp.ps1 send",
     "whatsapp:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/whatsapp.ps1 check",
     "whatsapp:diagnose": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/whatsapp.ps1 diagnose",
-    "test": "node --test tests/inventory.test.mjs tests/customer-identity.test.mjs tests/customer-sales.test.mjs tests/quick-add.test.mjs tests/core.test.mjs tests/contact-actions.test.mjs tests/whatsapp.test.mjs tests/lead-alerts.test.mjs tests/whatsapp-ui.test.mjs tests/catalog.test.mjs tests/telegram-catalog.test.mjs tests/worker.test.mjs tests/login.test.mjs tests/shop.test.mjs tests/payment.test.mjs tests/business-report.test.mjs tests/partners.test.mjs tests/partner-performance.test.mjs"
+    "test": "node --test tests/shop-production-layout.test.mjs tests/telegram-sandbox-shop.test.mjs tests/telegram-sandbox.test.mjs tests/supplier-comparison.test.mjs tests/inventory-firestore.test.mjs tests/local-workspace.test.mjs tests/inventory.test.mjs tests/customer-identity.test.mjs tests/customer-sales.test.mjs tests/quick-add.test.mjs tests/core.test.mjs tests/contact-actions.test.mjs tests/whatsapp.test.mjs tests/lead-alerts.test.mjs tests/whatsapp-ui.test.mjs tests/catalog.test.mjs tests/telegram-catalog.test.mjs tests/worker.test.mjs tests/login.test.mjs tests/shop.test.mjs tests/payment.test.mjs tests/business-report.test.mjs tests/partners.test.mjs tests/partner-performance.test.mjs"
   },
   "dependencies": {
     "firebase-admin": "^13.0.0"

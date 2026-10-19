@@ -16,8 +16,9 @@ const photoEvidence=message=>{
   const photo=message.photo?.at(-1);return photo?{fileId:photo.file_id,fileUniqueId:photo.file_unique_id,messageId:message.message_id,fileSize:photo.file_size}:undefined;
 };
 export class ManualCheckoutConversation {
-  constructor({orders,api,catalog,payments,adminIds,supportUrl}) {
+  constructor({orders,api,catalog,payments,adminIds,supportUrl,presentation={}}) {
     Object.assign(this,{orders,api,catalog,payments,supportUrl});this.admins=new Set(adminIds.map(String));
+    this.presentation={instructionText:paymentInstructionText,referencePrompt:paymentReferencePrompt,referencePlaceholder:'Paste Binance Pay transaction ID',...presentation};
   }
   send(chat,text,rows,extra={}) {
     return this.api.call('sendMessage',{chat_id:chat,text,...(rows?.length?{reply_markup:{inline_keyboard:rows}}:{}),...extra,link_preview_options:{is_disabled:true}});
@@ -99,7 +100,7 @@ export class ManualCheckoutConversation {
         const quote=this.payments.quote(product);
         const order=await this.orders.create(buyer,product,update.update_id,{username:user.username,paymentQuote:quote});
         const instructions=await this.payments.createPaymentInstructions(order);
-        await this.send(buyer,paymentInstructionText(order),this.instructionRows(order,instructions),{parse_mode:'HTML'});
+        await this.send(buyer,this.presentation.instructionText(order),this.instructionRows(order,instructions),{parse_mode:'HTML'});
         await this.orders.markInstructionsShown(order.id,buyer);
         if(order.isNew)await this.notifyAdmins(order);return true;
       }
@@ -112,12 +113,12 @@ export class ManualCheckoutConversation {
             try{await this.api.call('sendPhoto',{chat_id:buyer,photo:instructions.photo,caption:paymentQrCaption(order),parse_mode:'HTML'});}
             catch(error){if(error.confirmedFailure&&!error.retryAfter)throw new ShopError('The receiving QR could not be displayed. Contact admin before paying.');throw error;}
           }
-          await this.send(buyer,paymentInstructionText(order),this.instructionRows(order,instructions),{parse_mode:'HTML'});await this.orders.markInstructionsShown(id,buyer);return true;
+          await this.send(buyer,this.presentation.instructionText(order),this.instructionRows(order,instructions),{parse_mode:'HTML'});await this.orders.markInstructionsShown(id,buyer);return true;
         }
         if(operation==='paid') {
           if(order.paymentStatus!==PAYMENT_STATUS.PENDING){await this.send(buyer,paymentOrderSummary(order),this.checkoutButtons(order));return true;}
           await this.orders.setDialog(buyer,id,'reference');
-          await this.send(buyer,paymentReferencePrompt(order),undefined,{parse_mode:'HTML',reply_markup:{force_reply:true,input_field_placeholder:'Paste Binance Pay transaction ID'}});return true;
+          await this.send(buyer,this.presentation.referencePrompt(order),undefined,{parse_mode:'HTML',reply_markup:{force_reply:true,input_field_placeholder:this.presentation.referencePlaceholder}});return true;
         }
         if(!reviewable(order))throw new ShopError('This order is not awaiting payment information');
         await this.orders.setDialog(buyer,id,operation==='evidence'?'evidence':'information');

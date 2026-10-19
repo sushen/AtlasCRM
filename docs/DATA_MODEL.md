@@ -1,5 +1,15 @@
 # Data Model
 
+## Shared Firebase inventory ledger (local implementation, 2026-10-19)
+
+atlasInventoryState is server-owned under existing default browser denial. Node
+and Worker adapters store the same {key, payload, updatedAt} envelope: ID is SHA-256
+of the logical inventory key, payload is JSON, and updatedAt is a server timestamp.
+Credential payloads contain authenticated encrypted envelopes, not plaintext.
+Logical unit/secret/claim/receipt/audit/supplier keys retain the InventoryProgram
+semantics documented in INVENTORY.md. This is the chosen shared-data direction;
+hosted adapter activation is not deployed. No local ledger migration was performed.
+
 ## Private owned-stock ledger (prepared 2026-10-19)
 
 Existing Worker SQLite keys `iv:unit`, `iv:secret`, `iv:fingerprint`, `iv:purchase`,
