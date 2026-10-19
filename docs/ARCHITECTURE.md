@@ -1,5 +1,11 @@
 # Architecture
 
+The reviewed journey/owned-inventory implementation below was released to Firebase
+Hosting and the existing Worker on 2026-10-19 after explicit operator approval.
+Production inventory uses the shared Firestore adapter and the existing server-only
+keyring. Historical local/prepared wording is superseded by DEPLOYMENT.md receipts.
+No automatic WhatsApp capture/reply, supplier order or access revocation activation.
+
 ## Local customer journey and short-term account access — 2026-10-19
 
 The pure customer-journey utility projects recorded activities, purchases,

@@ -1,5 +1,14 @@
 # Firebase
 
+## Shared inventory production activation — 2026-10-19
+
+The operator approved and released the CRM Hosting and private Worker inventory
+backend. Production selects INVENTORY_STORAGE=firestore and reuses the same backed-up
+keyring as localhost. atlasInventoryState records and customer/product/purchase
+links are shared without migration. No Firestore rules or indexes were changed;
+browser inventory ledger access remains denied, with operator-authenticated Worker
+routes mediating all inventory operations. See DEPLOYMENT.md for release receipts.
+
 ## Local workspace with shared Firebase (2026-10-19)
 
 `npm run preview:workspace` now builds real Firebase browser authentication and

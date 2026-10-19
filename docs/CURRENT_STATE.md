@@ -1,5 +1,19 @@
 # Atlas CRM - Current State
 
+## CRM source and production release completed — 2026-10-19
+
+Reviewed CRM workflow source was committed/pushed as 20a42c6 on the current feature
+branch. Both GitHub CI runs passed; master remains unchanged. Worker
+9366fb41-023c-4a30-8f34-dbb20304a30f now enables operator-only inventory against
+the shared Firestore ledger with the existing keyring. All 34 prior bindings,
+Telegram behavior/settings, order/payment/partner state and webhook were preserved.
+Firebase Hosting 55d9112a6ca382dc released all 54 public assets, whose live hashes
+match staging. Private file probes return 404, Worker health is 200 and anonymous
+inventory is denied. Existing Telegram webhook remains connected, zero pending.
+NAM and automatic WhatsApp capture/replies remain inactive. Signed-in production
+UI verification still awaits the operator's live Firebase login in the browser.
+See DEPLOYMENT.md for receipts and rollback; earlier local-only entries are history.
+
 ## CRM publication authorized — 2026-10-19
 
 Operator explicitly requested source commit/push and release of the reviewed CRM

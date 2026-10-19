@@ -1,5 +1,11 @@
 # Private owned inventory and combined supplier catalog
 
+Production activation approved/released 2026-10-19: the live Hosting UI now uses
+the operator-only Worker backend, INVENTORY_ENABLED=true and shared Firestore ledger
+with the existing backed-up keyring. Real accounts/allocations are the same records
+seen locally. NAM remains off; previous preparation/local-only entries below are
+historical. See DEPLOYMENT.md for receipts and remaining signed-in verification.
+
 The dealer receipt has separate manual Email address, Username, Password and
 2FA secret key inputs. Supplier selection fills source/product/quote only, never
 delivered credentials. Password/2FA inputs are masked. An email or username plus

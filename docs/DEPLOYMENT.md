@@ -2,6 +2,24 @@
 
 ## Approved CRM inventory release — 2026-10-19
 
+Release completed: source commit `20a42c6` is pushed on `codex/quick-add-lead`;
+both GitHub CI runs passed. Existing `atlas` Worker version
+`9366fb41-023c-4a30-8f34-dbb20304a30f` activates shared Firestore inventory.
+All 34 previous bindings, Telegram settings, manual payments/partner tracking and
+Durable Object namespace were preserved. Added server-only keyring and inventory
+activation/storage bindings; no NAM activation or webhook change.
+Firebase Hosting version `55d9112a6ca382dc` released 54 public files. Every live
+asset hash matches staging; private source/keyring/env routes return 404.
+Worker health is 200, unauthenticated inventory reads return 401, and Telegram
+webhook is connected with zero pending updates. Authenticated live UI verification
+awaits the operator signing into the live browser; localhost operator login does
+not sign into the Hosting origin automatically.
+
+Private rollback receipts: `.worker-private/crm-inventory-before-settings.json`,
+`crm-inventory-before-source.txt`, `crm-inventory-hosting-before.json`. Previous
+Worker: `d58fb2c9-f931-41ea-84e9-a73b1802f4e3`. Preserve the keyring and existing
+inventory records on rollback; disabling the feature is safer than discarding data.
+
 The operator explicitly approved committing/pushing the CRM workflow and releasing
 the live Firebase website. This release activates the operator-only inventory
 backend with INVENTORY_ENABLED=true and INVENTORY_STORAGE=firestore, using the
@@ -9,7 +27,7 @@ existing backed-up keyring as a server secret and the existing protected Firesto
 identity. The same real customer/inventory records are shared with localhost.
 NAM/multi-supplier activation remains disabled; Telegram settings, payment/order
 state, webhook and published offers must remain preserved. No master merge is
-authorized by this release request. Release receipts are recorded after verification.
+authorized by this release request. Release receipts are recorded above.
 
 Scope: focused customer journey, listed-product/owned-account assignment, short
 customer access terms, owned inventory first and structured manual dealer account

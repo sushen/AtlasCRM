@@ -1,5 +1,16 @@
 # Security and Privacy
 
+## Approved hosted inventory activation — 2026-10-19
+
+Existing server-only inventory keyring was uploaded to the current Worker as a
+secret, preserving old key IDs and fingerprint key; it is absent from public assets
+and Git. Inventory routes are now enabled with existing operator verification,
+origin restrictions and rate limits, using the shared server-owned Firestore ledger.
+All prior live bindings and Telegram/order/payment settings were preserved. Private
+assets remain inaccessible and anonymous inventory reads return 401. No Firestore
+browser-rule expansion, account login, external credential delivery or WhatsApp
+automation was introduced. See DEPLOYMENT.md for the release/verification boundary.
+
 ## Customer-delivery account projection (local development, 2026-10-19)
 
 deliveryDetails is operator-authorized and audited, decrypts only on the server,

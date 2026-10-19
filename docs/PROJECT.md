@@ -1,5 +1,15 @@
 # Atlas CRM Project
 
+## Customer journey and owned inventory released — 2026-10-19
+
+Operator-approved Hosting and Worker release exposes the reviewed customer journey,
+catalog-product/owned-account assignment and supplier receipt form with explicit
+email/username/password/2FA entry. Shared Firebase stores the same real records
+used at localhost. The existing keyring stays server-side; customer delivery
+excludes 2FA. Reusable account source years and warranty remain distinct from
+customer access days. NAM and automatic WhatsApp workflow remain pending; Telegram
+shop behavior/settings are preserved. See DEPLOYMENT.md and JOURNEY_WORKSPACE.md.
+
 ## Inventory and multiple sources (prepared 2026-10-19)
 
 Private owned inventory, encrypted delivery credentials and purchase assignment

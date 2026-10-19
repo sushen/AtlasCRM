@@ -1,5 +1,12 @@
 # Customer journey workspace
 
+The reviewed workspace and inventory forms were released to the live Firebase
+site on 2026-10-19, with the existing Worker mediating operator-only shared-Firebase
+inventory. Use `https://atlascrm-c5722.web.app/?inbox=1` after signing in. Real
+automatic WhatsApp onboarding/sending remains pending; this release does not enable
+it. Deployment/static checks pass; signed-in browser verification awaits operator
+login. Earlier local review notes below remain historical. See DEPLOYMENT.md.
+
 Latest local review adds Assign product to the focused customer overview. It
 opens the saved catalog-product selector, matching owned inventory accounts and
 customer access-days field. Supplier account years/warranty are displayed as
