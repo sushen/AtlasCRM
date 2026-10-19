@@ -1,9 +1,21 @@
 # Atlas CRM - Current State
 
+## Visual stock overview and real catalog preview — 2026-10-19
+
+The feature branch compares owned availability, supplier breakdown and combined
+potential counts with headline cards and horizontal bars. Supplier fetch failures
+preserve owned totals; unknown/stale data are labeled partial. The user rejected
+simulated data for online catalog review: the preview build now fetches the real
+public catalog snapshot, shows its timestamp and contains no fictional seed stock
+or customers. Private inventory remains Not connected; no fabricated combined
+stock is shown. Supplier toggles and private mutations need isolated staging.
+This is a branch/preview change only; production Firebase/Worker is unchanged.
+See `CI_CD.md` and `INVENTORY.md`.
+
 ## Branch-first workflow (2026-10-19)
 
 The operator requires local tests → online feature-branch preview → explicit
-acceptance before merging to master. CI checks and the isolated fictional-data GitHub Pages preview are live on the
+acceptance before merging to master. CI checks and the isolated GitHub Pages preview are live on the
 `codex/quick-add-lead` branch. Initial commit `ca47fae` passed all checks and was
 published at `https://sushen.github.io/AtlasCRM/`. Draft PR: `sushen/AtlasCRM#1`.
 Master remains at `853a4dd`; no production deployment occurs on branch push.

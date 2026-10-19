@@ -3,7 +3,7 @@
 ## Branch-first workflow (2026-10-19)
 
 The operator requires local tests → online feature-branch preview → explicit
-acceptance before merging to master. CI checks and an isolated fictional-data
+acceptance before merging to master. CI checks and an isolated read-only
 GitHub Pages preview are prepared; no production deployment occurs on branch push.
 See [CI_CD.md](CI_CD.md) for commands, preview limits and promotion procedure.
 

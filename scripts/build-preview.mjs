@@ -10,6 +10,12 @@ const revision=process.env.GITHUB_SHA||execFileSync('git',['rev-parse','HEAD'],{
 if(!/^[a-f0-9]{40}$/.test(revision))throw Error('Invalid preview revision');
 const base=process.env.PREVIEW_BASE_PATH||'/';if(!/^\/(?:[A-Za-z0-9_-]+\/)*$/.test(base))throw Error('Invalid preview base path');
 await mkdir(join(target,'js','preview'),{recursive:true});
+const catalogResponse=await fetch('https://atlas.meshstocks.workers.dev/api/catalog/products',{headers:{Origin:'https://atlascrm-c5722.web.app'},redirect:'error',signal:AbortSignal.timeout(20000)});
+if(!catalogResponse.ok)throw Error('Real public catalog snapshot could not load. Do not substitute invented products.');
+const catalog=await catalogResponse.json();
+if(!Array.isArray(catalog.products)||!catalog.fetchedAt)throw Error('Invalid public catalog snapshot');
+await writeFile(join(target,'js','preview','catalog-snapshot.json'),JSON.stringify(catalog));
+
 for(const [source,destination]of [['runtime.js','preview/runtime.js'],['firebase.js','firebase.js'],['inventory-api.js','services/inventory-api.js'],['catalog-api.js','services/catalog-api.js']]){
   let content=await readFile(join(root,'preview',source),'utf8');
   if(source!=='runtime.js')content=content.replaceAll("'./preview/runtime.js'","'../preview/runtime.js'");
@@ -21,11 +27,11 @@ await writeFile(join(target,'js','services','whatsapp-api.js'),"export async fun
 const csp="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'none'; object-src 'none'; frame-src 'none'";
 async function rewrite(dir){for(const entry of await readdir(dir,{withFileTypes:true})){const path=join(dir,entry.name);if(entry.isDirectory()){await rewrite(path);continue;}if(!/\.(html|js)$/.test(entry.name))continue;
   let text=await readFile(path,'utf8');text=text.replaceAll('href="/','href="./').replaceAll('src="/','src="./').replaceAll("'/images/","'./images/").replaceAll("'/?","'./?").replaceAll("'/index.html'","'./index.html'");
-  if(path.endsWith('store.js'))text=text.replace("const key='atlas_demo_store'","const key='atlas_branch_preview_store'");
+  if(path.endsWith('store.js'))text=text.replace("const key='atlas_demo_store'","const key='atlas_branch_review_store_v2'");
   if(entry.name==='index.html')text=text.replace('<head>',`<head><base href="${base}"><meta name="atlas-preview-revision" content="Commit ${revision}"><meta http-equiv="Content-Security-Policy" content="${csp}">`).replace('<body>','<body><script type="module" src="./js/preview/runtime.js"></script>');
   if(entry.name==='login.html')text=`<!doctype html><meta charset="utf-8"><base href="${base}"><meta http-equiv="Content-Security-Policy" content="${csp}"><h1>Isolated branch preview</h1><p>Sign-in is disabled. Use fictional data only.</p><a href="./index.html">Open CRM preview</a>`;
   if(entry.name==='inventory.js')text=text.replace('Account credentials, license key, code, or seat instructions','Preview: type DEMO-ONLY; never enter real credentials');
   await writeFile(path,text);
 }}
 await rewrite(target);await writeFile(join(target,'.nojekyll'),'');
-console.log('Isolated preview prepared. Fictional data only; live Firebase, backend and messaging access disabled.');
+console.log('Isolated preview prepared. Real public catalog snapshot; private Firebase and all external writes disabled.');

@@ -30,29 +30,35 @@ There is no master-to-production deploy job and no production credential in CI.
 
 ## Preview boundaries
 
-The repository is public. The preview is public too and uses fictional examples
-only. `scripts/build-preview.mjs` generates `.firebase/preview-public`, replacing
-Firebase, inventory, catalog, partner and messaging adapters only in generated
-output. The checked-in production adapters are preserved. Preview authentication
-is disabled; a visible banner and same-origin-only network policy identify the
-simulation. Demo customer/purchase storage uses a separate browser key. Inventory
-is held in memory, supplier switches are simulated, and receive accepts only the
-literal DEMO-ONLY as credentials. Never enter real customer data or credentials.
-This does not validate live server authorization/encryption/supplier connectivity;
-those paths are covered by mocked runtime checks. Real integration acceptance
-requires an isolated configured staging backend, not the production database.
+The repository and preview are public. The operator requested real supplier data,
+so the generated preview now contains a read-only snapshot of the existing public
+catalog: actual products, retail prices and availability, fetched during the build.
+The dashboard shows its fetch time and labels it a snapshot. It is not a live
+refresh, and a failed API read fails the build rather than inventing data. No
+supplier API token is needed: the build reads the already-public catalog endpoint.
+NAM remains unavailable until its token/API are verified.
 
-Local browser-only preview: `node scripts/build-preview.mjs`, then serve only
-`.firebase/preview-public` at the root of a local HTTP server. For GitHub Pages,
-CI sets PREVIEW_BASE_PATH=/AtlasCRM/. Never serve the repository root or private
-runtime folders publicly. Build output, real environment files and keyrings stay
-ignored and must never be committed or uploaded as artifacts.
+Private customer and owned-inventory connections stay disabled. The preview has
+no fictional seed records. Owned stock displays Not connected, and combined
+potential availability cannot be calculated until real owned inventory is connected.
+There is no simulated supplier toggle, credential reveal or stock assignment in
+this build. It is an actual-source catalog review, not full integration staging.
+Do not enter private customer data or credentials; local test inputs stay in a
+separate browser key. Live Firebase/auth/messaging/partner/inventory adapters are
+replaced only in generated output and network policy restricts browser requests
+to the preview origin. Production adapters remain unchanged in source.
+
+Local preview: `node scripts/build-preview.mjs`, then serve only
+`.firebase/preview-public` at a local HTTP origin. GitHub CI uses
+PREVIEW_BASE_PATH=/AtlasCRM/. Build artifacts, secrets and private runtime folders
+are ignored. Real private-inventory acceptance requires a separately isolated
+staging backend; public GitHub Pages never receives production credentials.
 
 ## Review and promotion
 
 1. Implement on a feature branch; run tests and inspect local behavior.
 2. Commit/push reviewed source, configuration and documentation; CI must pass.
-3. Test the exact commit's online fictional preview and review the draft PR.
+3. Test the exact commit's online branch preview and review the draft PR.
 4. Fix issues on the branch; pushes rerun CI and replace the preview.
 5. Only after the operator accepts the tested commit, mark the PR ready and merge
    to master. Do not enable auto-merge or push directly to master.
