@@ -7,6 +7,7 @@ import {ShopFileStorage} from '../server/shop-file-storage.mjs';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {normalizeProduct} from '../server/catalog.mjs';
 function storage() {
   const values=new Map();let tail=Promise.resolve();
   const get=async key=>structuredClone(values.get(key));
@@ -103,4 +104,26 @@ test('local order file preserves orders across restart and serializes duplicate 
     const result=await Promise.all([orders.create(1,product,1),orders.create(1,product,1)]);assert.equal(result[0].id,result[1].id);
     assert.equal((await new ShopOrders(new ShopFileStorage(path)).list(1)).length,1);
   }finally {await rm(dir,{recursive:true,force:true});}
+});
+
+
+test('brand cards and refreshing product details use current stock prices without creating an order',async()=>{
+  const calls=[];const orders=new ShopOrders(storage(),{adminIds:[99]});let available=11;
+  const bot=new TelegramShop({orders,api:{call:async(method,payload)=>{calls.push({method,payload});return {};}},
+    catalog:{list:async()=>({products:[normalizeProduct({productId:'canva_1',name:'Canva Pro',price:{amount:10,currency:'USD'},availability:{available},description:'First line\n\nSecond line'})],fetchedAt:'2026-10-19T06:00:00Z'})},
+    adminIds:[99],supportUrl:'https://t.me/FictionalAdmin'});
+  const update=data=>({callback_query:{id:'fixture',from:{id:1},data,message:{chat:{id:1,type:'private'},message_id:1}}});
+  await bot.handle(update('family:Canva:0'));
+  assert.ok(calls.some(c=>c.method==='sendPhoto'&&c.payload.photo.includes('domain=canva.com')));
+  await bot.handle(update('product:canva_1'));
+  assert.match(calls.at(-1).payload.text,/\$11.00/);
+  assert.match(calls.at(-1).payload.text,/Catalog updated:/);
+  available=1;
+  const photoCount=calls.filter(c=>c.method==='sendPhoto').length;
+  await bot.handle(update('refresh:canva_1'));
+  assert.match(calls.at(-1).payload.text,/\$14.00/);
+  assert.equal(calls.at(-1).method,'editMessageText');
+  assert.equal(calls.filter(c=>c.method==='sendPhoto').length,photoCount);
+  assert.equal(calls.at(-1).payload.parse_mode,'HTML');
+  assert.deepEqual(await orders.list(1),[]);
 });

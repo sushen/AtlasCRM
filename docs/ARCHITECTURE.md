@@ -1,5 +1,47 @@
 # Architecture
 
+## Private stock and multi-supplier preparation (2026-10-19)
+
+`server/inventory/` adds an encrypted owned-item ledger and atomic allocation in
+the existing SQLite coordinator. Persisted supplier policies filter sources before
+fetch/cache use. An operator-only paginated metadata summary supplies owned-stock
+counts to the dashboard independently of supplier data. Worker inventory routes enforce Firebase operator
+claims; a read-only Firestore adapter validates CRM product/customer/purchase
+references. The framework-free Inventory view and purchase cards expose private
+metadata and explicit audited credential reveals. No browser/demo secret storage.
+
+`server/suppliers/nam.mjs` prepares GET-only fresh USD offers; explicit mappings
+combine supplier availability and choose cheapest available cost plus current
+margin once. Current supplier cost snapshots remain server-private. Both feature
+gates default off; no deployment or live second-provider validation is complete.
+See `INVENTORY.md` / ADR 0006.
+
+## Username-only customer identity (2026-10-19)
+
+Quick Add uses one field for phones or handles. `customer-identity.js` normalizes
+manual handles and supplies null-phone display fallbacks. Customer IDs remain the
+purchase/history relationship key. Username matching uses its own field; phone
+imports/merge and official transport retain phone semantics. No null-phone matching,
+automatic cross-identity linking or guessed chat URL is used. See
+[WHATSAPP_USERNAMES.md](WHATSAPP_USERNAMES.md) and ADR 0005.
+
+## Customer purchase profile (released 2026-10-19)
+
+`js/views/customer-sales.js` renders the profile summary/form; pure validation,
+phone search, dates and totals live in `js/utils/customer-sales.js`.
+`recordCustomerPurchase` uses one retry-safe Firestore transaction (one localStorage
+write in demo) for the purchase, optional linked subscription, timeline and customer
+qualification. Existing operator-only rules and manual transport boundaries remain.
+See [CUSTOMER_PURCHASES.md](CUSTOMER_PURCHASES.md).
+
+## Mobile Quick Add (released 2026-10-19)
+
+`/?quick-add=1` reuses the operator-gated app with a dedicated narrow form.
+`js/views/quick-add.js` owns UI, `js/services/quick-add.js` owns input/source mapping,
+and the existing store normalizes/matches records and atomically batches new
+customer/activity writes. The existing private Telegram admin menu links to it;
+public catalog/shop menus remain unchanged. See [QUICK_ADD.md](QUICK_ADD.md).
+
 ## WhatsApp lead capture and desktop alerts — prepared 2026-10-18
 
 The existing Node message repository now atomically stores a server-owned enquiry
@@ -137,8 +179,8 @@ See [CLOUDFLARE.md](CLOUDFLARE.md).
 ## Local supplier catalog (2026-10-14)
 
 Atlas Market adds a storefront hero/featured rail and Telegram enquiry links on
-the existing local index preview. `catalog-pricing.js` defines the shared 10%
-markup/currency-rounding rule; `server/catalog.mjs` applies it before public output.
+the existing local index preview. `catalog-pricing.js` defines the shared stock-based 10–40%
+markup/currency-rounding rule (see `CATALOG.md`); `server/catalog.mjs` applies it before public output.
 `catalog-settings.mjs` validates the private configured Telegram group URL.
 `telegram-catalog.mjs` owns menu formatting and the allowlisted command bot;
 `telegram-catalog-runner.mjs` supplies official polling and ignored offset state.

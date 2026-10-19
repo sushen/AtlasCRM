@@ -1,5 +1,98 @@
 # Deployment
 
+## Branch-first workflow (2026-10-19)
+
+The operator requires local tests → online feature-branch preview → explicit
+acceptance before merging to master. CI checks and an isolated fictional-data
+GitHub Pages preview are prepared; no production deployment occurs on branch push.
+See [CI_CD.md](CI_CD.md) for commands, preview limits and promotion procedure.
+
+## Inventory / second-source activation pending — 2026-10-19
+
+This task did not deploy or enable these features. A backed-up keyring was prepared locally with restricted permissions. Inventory
+activation requires uploading it as the server-only `INVENTORY_KEYRING`, existing same-project Firestore reference
+access and `INVENTORY_ENABLED=true`. Multi-source publication separately needs
+`NAM_RESELLER_TOKEN`, `NAM_RESELLER_CURRENCY=USD`, a healthy API/product contract,
+reviewed exact mappings and `MULTI_SUPPLIER_ENABLED=true`. Both flags default off.
+Preserve all live bindings, current webhook/SQLite state and old encryption keys;
+no rules/indexes migration is required. See `INVENTORY.md` for release/rollback.
+All 183 tests, Worker dry-run, mocked inventory and existing checkout runtime
+smokes pass. No supplier purchase, production data write or credential upload.
+
+## Username leads and customer purchases released — 2026-10-19
+
+Operator explicitly authorized deployment after choosing one field for phones or
+WhatsApp usernames. Final Hosting version `032367feb64213c5` releases 46 public
+assets; Worker `94bcda47-3190-484e-a7d6-d063eb579b67` updates private help text.
+All 32 live bindings, partner tracking, SQLite state and webhook are preserved.
+No Firestore rules/indexes or real customer/purchase/order/payment were changed.
+
+All 166 tests, 14 final focused checks, Worker dry-run, private-value scan and
+390px visual checks pass. Live browser assets match source and private files
+remain 404. Health/public catalog/auth/CORS/shop-readiness checks pass. No real
+Telegram message was sent. Hosting used the official API with existing login;
+release/rollback receipts are private under `.worker-private/customer-workflow-*`
+and `.worker-private/customer-workflow-final-*`. Previous Worker for rollback is
+`8da1ef61-f972-45c9-b803-68a3513ec0f8`; previous Hosting `067ddecb266c56ec`.
+No command-scope update was needed: `/addlead` and the same route already existed.
+See `WHATSAPP_USERNAMES.md` and `CUSTOMER_PURCHASES.md` for operator use/limitations.
+
+## Quick Add released — 2026-10-19
+
+Operator approved Hosting and private Telegram menu deployment. Hosting version
+`067ddecb266c56ec` released 43 public assets; all verified browser assets match
+local source and private source remains 404. Existing `atlas` Worker version
+`8da1ef61-f972-45c9-b803-68a3513ec0f8` preserves all 32 live bindings and state.
+Private admin commands include `/addlead`; public scopes were not changed.
+Existing webhook registration, Firestore rules and business records were untouched.
+
+All 152 tests, Worker dry-run, mocked manual-payment smoke and private-value scan
+passed. Live health, public catalog, webhook auth, CORS and enabled shop checks
+passed. Firebase CLI stalled before upload and was stopped; the official Hosting
+API completed release using the saved login and prior Hosting config. Cloudflare
+login refreshed normally. Rollback source/settings and release receipts are saved
+privately in `.worker-private/quick-add-*`; no private files enter Hosting.
+Previous Worker: `6ee6cc99-ec56-49b0-9392-d1e76128760f`. No test Telegram message or
+production lead/order/payment was created. Operator should request `/menu` and
+confirm phone sign-in and their next deliberate real enquiry. See `QUICK_ADD.md`.
+
+## Telegram labels released — 2026-10-19
+
+Worker `6ee6cc99-ec56-49b0-9392-d1e76128760f` adds the operator-selected text and
+standard emoji polish. All 32 production bindings were preserved; 43 affected
+tests, Worker dry-run, private-value scan and live health/catalog/access/shop
+checks passed. No Hosting or webhook release, real test message or order change.
+Prior Worker: `49d038e3-5324-446d-8da2-31e1399043c0`; private rollback snapshots
+and logs remain under ignored `.worker-private/`.
+
+## Telegram brand cards and readable details released — 2026-10-19
+
+Existing `atlas` Worker version `49d038e3-5324-446d-8da2-31e1399043c0` and
+41-file Firebase Hosting site are released with formatted product details,
+actual mapped brand-logo photos and in-place price/stock refresh. All 32 live
+bindings are preserved. All 145 tests, Worker dry-run, mocked workerd/SQLite
+manual-payment smoke and private-value scan pass. Live health/access/shop checks,
+all 374 supplier price comparisons and Hosting source matching pass. Private
+source routes remain 404. No real Telegram message or channel edit was used for
+verification; provider-rendered appearance awaits the next incoming user request.
+Prior Worker: `50649c23-93ee-43d4-b85d-7390962409c1`; private rollback snapshots
+and release logs are retained under ignored `.worker-private/`.
+
+## Scarcity pricing released — 2026-10-19
+
+Operator approved live release of the stock-based 10–40% catalog markup. Existing
+`atlas` Worker version `50649c23-93ee-43d4-b85d-7390962409c1` preserves all 32
+production bindings and enabled partner tracking. Firebase Hosting released the
+41-file staged site. All 142 tests and Worker dry-run passed; configured private
+values were absent from the public assets and Worker bundle. Live read-only
+checks matched all 374 prices to current supplier normalization across all tiers.
+Health, catalog, CORS, webhook authentication and enabled bot/shop readiness
+passed; live Hosting assets match source and private source paths return 404.
+No order/payment, Firestore rule, webhook registration or channel-post mutation.
+Prior Worker for rollback: `fe7e275e-0078-410e-bd3b-aebb018ea3b6`. Private settings
+and source snapshots plus release logs are under ignored `.worker-private/`.
+See `CATALOG.md` for tier boundaries, fallback and saved-quote behavior.
+
 ## Collaborator performance released — 2026-10-17
 
 The operator approved the release. Existing `atlas` Worker version

@@ -26,7 +26,10 @@ async function load(action = 'groups:0') {
     const body = await response.json();
     if (generation !== requestGeneration) return;
     groupUrl = body.telegramUrl;
-    message.textContent = body.text; inline.replaceChildren();
+    message.textContent = body.parse_mode === 'HTML'
+      ? body.text.replace(/<\/?(?:b|code)>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+      : body.text;
+    inline.replaceChildren();
     for (const row of body.reply_markup.inline_keyboard) {
       const line = document.createElement('div'); line.className = 'telegram-inline-row';
       for (const item of row) {

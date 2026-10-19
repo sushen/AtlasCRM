@@ -1,5 +1,28 @@
 # Atlas channel shop and manual payment review
 
+## Telegram product presentation — released 2026-10-19
+
+Product details use escaped Telegram HTML headings, separate price/stock fields,
+spaced supplier paragraphs and bullets, order requirements and product references.
+The description cleaner strips supplier HTML/script/style content, preserves wording
+and bounds long descriptions with an explicit support prompt. Freshness timestamps
+use Bangladesh time; stale catalog warnings remain visible. Refresh price & stock
+updates the existing detail message using current catalog data (normal 60-second
+cache), without creating an order or resending the logo. Repeated unchanged edits
+are successful. Existing orders keep their saved quotes; old Telegram messages and
+published channel posts are snapshots until reopened/refreshed or explicitly edited.
+
+Selecting a mapped family or product shows its actual brand favicon as a photo
+from the same allowlisted brand-domain map used by the website. Five featured
+logo URLs were checked for successful image responses. Logo images are separate
+from text buttons and require no Telegram Premium. Unmapped products keep existing
+image/text fallbacks; confirmed photo failures still permit readable text details.
+No custom-emoji pack, Premium purchase or channel broadcast is introduced.
+Released to the existing Worker and Firebase Hosting. All 145 tests, Worker
+dry-run and mocked workerd/SQLite manual-payment smoke pass. No real Telegram
+message was sent for verification; the next incoming user request exercises
+Telegram rendering.
+
 ## Clear transaction-reference prompt — 2026-10-15
 
 I Have Paid now opens a formatted prompt asking the buyer to paste the Binance
@@ -79,7 +102,8 @@ Product pricing labels: variant buttons show the already-normalized retail price
 first, followed by the product name (for example `$11.00 · Canva Pro`), replacing
 the old “View” prefix. Featured channel title and primary order button also show
 the exact selected variant price. Formatting never applies another markup: supplier
-price ×1.10 is applied once by the catalog adapter, then shared across web/bot/posts.
+price receives the stock-based 10–40% markup once in the catalog adapter, then
+is shared across web/bot/posts. See `CATALOG.md`; saved order quotes do not change.
 
 ## Photo cards and direct product handoff
 
@@ -112,7 +136,7 @@ are not inferred from buyer-supplied text, channel usernames or callback payload
 
 Channel welcome and five featured posts open private bot conversations. The
 welcome links to the full catalog, admin and public website. Featured cards quote
-an actual listing's retail price (supplier +10% once), stock and reference.
+an actual listing's retail price (stock-based markup once), stock and reference.
 Snapshots can become stale; the private bot re-fetches current cached catalog.
 Channel buttons are URLs, not shared mutable order callbacks, so another reader
 cannot change a public post into their own checkout. No buyer data appears in

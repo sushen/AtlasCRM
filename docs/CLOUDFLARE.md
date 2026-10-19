@@ -108,7 +108,7 @@ Website budgets: 30 requests/IP/minute and 300 globally/minute. Telegram budgets
 20 updates/chat/minute and 120 globally/minute, plus persistent provider cooldowns.
 Rejected requests still consume platform requests; these are application controls,
 not a guarantee against denial of service. Supplier errors return fixed safe
-messages. Both Node and Workers share normalization and apply the 10% markup once.
+messages. Both Node and Workers share normalization and apply the stock-based 10–40% markup once (see `CATALOG.md`).
 
 ## Runtime configuration
 

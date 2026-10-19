@@ -1,4 +1,5 @@
-import {productFamily} from './catalog-groups.js';
+import {productFamily,productBrandImage} from './catalog-groups.js';
+export const telegramBrandImage = family => productBrandImage(family);
 const artwork={'ChatGPT & Codex':'chatgpt',Claude:'claude','Google AI & Veo':'gemini',Canva:'canva',Notion:'notion'};
 export function shopArtwork(product) {
   const family=typeof product==='string'?product:productFamily(product);

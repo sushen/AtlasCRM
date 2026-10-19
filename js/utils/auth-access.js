@@ -1,7 +1,8 @@
 export const isOperator = claims => claims?.atlasOperator === true;
 export function loginDestination(claims, search='') {
   if(new URLSearchParams(search).get('next')==='market')return '/?catalog=1';
-  return isOperator(claims)?'/index.html':'/?catalog=1';
+  if(!isOperator(claims))return '/?catalog=1';
+  return new URLSearchParams(search).get('next')==='quick-add'?'/?quick-add=1':'/index.html';
 }
 export function loginError(code) {
   const messages={

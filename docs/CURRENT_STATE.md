@@ -1,5 +1,119 @@
 # Atlas CRM - Current State
 
+## Branch-first workflow (2026-10-19)
+
+The operator requires local tests → online feature-branch preview → explicit
+acceptance before merging to master. CI checks and an isolated fictional-data
+GitHub Pages preview are prepared; no production deployment occurs on branch push.
+See [CI_CD.md](CI_CD.md) for commands, preview limits and promotion procedure.
+
+## Private inventory and second supplier — prepared 2026-10-19, not deployed
+
+Implemented gated operator-only owned-stock receipt/assignment/reveal/delivery,
+server encryption and reference validation, persistent per-supplier on/off controls,
+and owned-stock counts on the CRM dashboard. Disabling a source excludes its data
+and invalidates cache without altering owned units or saved order quotes.
+Private inventory in CRM and
+Stock and credentials on purchase cards. Public supplier availability remains
+separate from owned units. New source is `https://api.nam.qzz.io`; operator confirmed
+USD and cheapest available comparable cost plus current margin. Exact mappings
+and shared stock pools avoid name guessing/double-counting. Fresh GET-only NAM
+adapter and combined catalog are prepared behind `MULTI_SUPPLIER_ENABLED`.
+
+All 183 tests, Worker dry-run, mocked inventory workerd/SQLite flow and existing
+manual-payment runtime smoke pass. Provider health/products returned HTTP 502;
+no NAM token was present in saved private config, so its product wrapper is not
+verified live. A server keyring and separate private backup were generated locally with restricted
+permissions. No key was uploaded, feature flag enabled, production
+record written, supplier order/balance endpoint invoked or deployment performed.
+See `INVENTORY.md` and ADR 0006 for setup and remaining activation steps.
+
+## Username leads and customer purchases — released 2026-10-19
+
+Operator authorized one shared phone-or-username field and production release.
+Hosting version `032367feb64213c5` serves 46 public assets; existing Worker version
+`94bcda47-3190-484e-a7d6-d063eb579b67` updates the private Add lead help wording
+and preserves all 32 bindings, partner tracking, persistent state and webhook.
+
+Quick Add now accepts username-only leads, keeps phone/handle namespaces separate,
+searches either identity and links purchases by stable customer ID. The profile
+supports attaching purchased products, totals paid/outstanding by currency and
+purchase/start/expiry dates, with retry-safe atomic history. No Firestore rule
+change, automatic username-to-phone resolution, customer message or production
+customer/purchase write was performed. The example customer's products, amounts
+and terms remain unentered because those facts have not been supplied.
+
+All 166 tests pass; 14 focused identity/sales checks passed again after numeric
+username search isolation. Worker dry-run, private-value scan and 390px visual QA
+pass. Final live Hosting assets match source; Worker health/catalog/auth/CORS and
+shop readiness pass. Hosting used the existing saved login via its official API.
+The saved checkout remains untouched; this worktree carries its preserved recent
+changes plus the new implementation. See `WHATSAPP_USERNAMES.md`,
+`CUSTOMER_PURCHASES.md` and ADR 0005. Automatic WhatsApp capture is still not live.
+
+## Mobile Quick Add — released 2026-10-19
+
+The operator approved deployment in voice. The 43-file Hosting release and existing
+`atlas` Worker `8da1ef61-f972-45c9-b803-68a3513ec0f8` are live. All 32 production
+bindings, partner tracking and the existing webhook/state were preserved. The
+private admin slash-command menu includes `/addlead`; buyers' scopes are unchanged.
+Request `/menu` in the bot private chat for the **➕ Add lead** keyboard, or open
+`https://atlascrm-c5722.web.app/?quick-add=1`. Sign in as the existing CRM operator.
+
+All 152 tests, mocked Worker/manual-payment smoke, private-value scan, Hosting
+source matching and live Worker health/catalog/auth/shop-readiness checks pass.
+The Firebase CLI stalled before upload; it was stopped, then Hosting was released
+through its API using the existing saved login and preserving the prior config.
+Cloudflare OAuth refreshed through the existing login. No Telegram message,
+production customer/order/payment write, rule change or webhook registration was
+performed. Phone sign-in and a deliberate real enquiry save remain an operator
+acceptance check. Automatic WhatsApp capture is still not live.
+The saved project's recent changes were preserved in this isolated worktree;
+the saved checkout itself was not edited. See [QUICK_ADD.md](QUICK_ADD.md).
+
+## Telegram text and emoji polish — released 2026-10-19
+
+Operator chose clearer text and standard emoji without Premium. All recognized
+catalog families have relevant emoji, menus have escaped HTML headings and spaced
+price/stock fields, and navigation/order labels are clearer. Products replaces Buy
+on the shop keyboard, with legacy input still accepted. Existing pricing, order
+quotes and image cards are preserved. Worker `6ee6cc99-ec56-49b0-9392-d1e76128760f`
+is live with all 32 bindings preserved. The 43 affected tests, Worker dry-run,
+private-value scan and live health/catalog/access/shop checks passed. This release
+changed only Worker code; no Hosting, webhook, customer-message or order mutation.
+See `TELEGRAM.md`.
+
+## Telegram readability and brand cards — released 2026-10-19
+
+Readable escaped product headings, spaced descriptions, price/stock freshness and
+in-place refresh are implemented with actual brand-logo photos on mapped family/
+product selection. No Premium/custom emoji required; buttons remain text/emoji.
+All 145 tests and Worker dry-run pass; see `TELEGRAM.md`. Live pricing was rechecked
+against all 374 current supplier products; old messages retain earlier snapshots.
+Existing Worker version `49d038e3-5324-446d-8da2-31e1399043c0` and the 41-file
+Hosting release are live, preserving all 32 production bindings. Worker dry-run,
+mocked workerd/SQLite manual-payment smoke, live health/access/shop checks and
+Hosting source matching pass. No real Telegram test message, channel-post edit,
+order/payment mutation or webhook change was made.
+
+## Scarcity pricing — released 2026-10-19
+
+Replaced the flat catalog markup with supplier-stock tiers: 1 unit +40%, 2–4
++30%, 5–10 +20%, 11+ +10%. Unknown/invalid/zero stock retains +10%; zero-stock
+ordering remains blocked. Shared normalization supplies website, Telegram and
+newly generated channel posts; existing quotes and published messages are preserved.
+Catalog pricing metadata now describes the tiers. See `CATALOG.md`.
+All 142 tests and the Worker deployment dry-run passed, including tier boundaries,
+currency rounding, refreshed catalog display and saved payment quote preservation.
+Operator approved live deployment. The existing `atlas` Worker is released as
+`50649c23-93ee-43d4-b85d-7390962409c1`; all 32 production bindings were preserved.
+Read-only checks matched all 374 live prices to supplier normalization, covering
+all four tiers. Health, public catalog, CORS, webhook authentication and enabled
+bot/shop readiness passed. Firebase Hosting released the 41-file staged site;
+live assets including the pricing helper match local source, and private source
+paths remain 404. No webhook registration, order/payment mutation or channel
+publication was performed.
+
 ## WhatsApp enquiries and Genie alerts — prepared 2026-10-18
 
 Added signed-message referral retention, transactional enquiry alerts, private

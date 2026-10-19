@@ -42,7 +42,7 @@ try {
   await call('/webhooks/telegram',webhook(2));assert.equal(telegramCalls,1);
   assert.equal((await call('/api/catalog/products',{headers:{Origin:'https://atlascrm-c5722.web.app'}})).status,401);
   const headers={Origin:'https://atlascrm-c5722.web.app',Authorization:'Bearer '+token};
-  const catalog=await (await call('/api/catalog/products',{headers})).json();assert.equal(catalog.products[0].price,11);
+  const catalog=await (await call('/api/catalog/products',{headers})).json();assert.equal(catalog.products[0].price,12);
   await call('/api/catalog/products',{headers});assert.equal(supplierCalls,1);
   assert.equal((await call('/api/catalog/products',{headers:{Origin:'https://unapproved.invalid'}})).status,403);
   const shopUpdate=async(update)=>{
@@ -51,11 +51,19 @@ try {
   };
   const buyerMessage=(id,text,update_id)=>({update_id,message:{chat:{id,type:'private'},from:{id},text}});
   const buyerCallback=(id,data,update_id)=>({update_id,callback_query:{id:'smoke-callback',from:{id},data,message:{chat:{id,type:'private'},message_id:1}}});
+  await shopUpdate(buyerCallback(1,'family:Canva:0',7));
+  assert.ok(telegramPayloads.some(p=>p.photo?.includes('domain=canva.com')));
+  await shopUpdate(buyerCallback(1,'product:smoke_product',8));
+  assert.equal(telegramPayloads.at(-1).parse_mode,'HTML');
+  assert.match(telegramPayloads.at(-1).text,/<b>Product details<\/b>/);
+  assert.ok(telegramPayloads.at(-1).reply_markup.inline_keyboard.flat().some(b=>b.callback_data==='refresh:smoke_product'));
+  await shopUpdate(buyerCallback(1,'refresh:smoke_product',9));
+  assert.match(telegramPayloads.at(-1).text,/\$12.00/);
   await shopUpdate(buyerCallback(1,'buy:smoke_product',10));
   const order=/AM-[a-f0-9]{16}/.exec(telegramPayloads.at(-1).text)?.[0];assert.ok(order,'Private shop order must persist');
   if(manual) {
     const created=telegramPayloads.find(p=>p.chat_id===1&&p.parse_mode==='HTML'&&p.text?.includes('<b>💳 Binance Pay</b>'));
-    assert.match(created.text,/<code>11.00<\/code> <b>USDT<\/b>/);assert.equal(created.reply_markup.inline_keyboard[2][0].text,'Pay with Binance');
+    assert.match(created.text,/<code>12.00<\/code> <b>USDT<\/b>/);assert.equal(created.reply_markup.inline_keyboard[2][0].text,'Pay with Binance');
     await shopUpdate(buyerCallback(1,'pay:'+order,11));assert.ok(telegramPayloads.some(p=>p.photo==='fixture_receiving_qr_123456'));
     await shopUpdate(buyerCallback(1,'paid:'+order,12));
     await shopUpdate(buyerMessage(1,'TX-123456',13));const count=telegramCalls;

@@ -2,22 +2,24 @@ import { ShopError } from './shop-orders.mjs';
 import { formatCatalogPrice } from '../js/utils/catalog-pricing.js';
 import { familyMenu,groupMenu,productMessage } from './telegram-catalog.mjs';
 import { productFamily } from '../js/utils/catalog-groups.js';
-import {telegramProductImage} from '../js/utils/shop-images.js';
+import {telegramProductImage,telegramBrandImage} from '../js/utils/shop-images.js';
 import {ManualCheckoutConversation,paymentOrderSummary} from './telegram-manual-checkout.mjs';
 
 export const SHOP_COMMANDS=[{command:'start',description:'Open Atlas Market'},{command:'menu',description:'Open shop menu'},
   {command:'products',description:'Browse products'},{command:'profile',description:'Your shop profile'},
   {command:'history',description:'Your orders'},{command:'payment',description:'Submit order payment reference'},
   {command:'support',description:'Contact admin'}];
-export const ADMIN_SHOP_COMMANDS=[...SHOP_COMMANDS,{command:'orders',description:'Active orders and payment review'},
+export const ADMIN_SHOP_COMMANDS=[...SHOP_COMMANDS,{command:'addlead',description:'Add lead in private Atlas CRM'},{command:'orders',description:'Active orders and payment review'},
   {command:'approve',description:'Review an order before approval'},{command:'reject',description:'Review an order before rejection'},
   {command:'fulfill',description:'Record fulfillment after approval'}];
 export const MANUAL_CHECKOUT_COMMANDS=[{command:'evidence',description:'Attach payment screenshot to your order'},
   {command:'info',description:'Send requested order information'}];
 export const MANUAL_CHECKOUT_ADMIN_COMMANDS=[{command:'deliveries',description:'Verified orders awaiting manual delivery'},
   {command:'requestinfo',description:'Ask buyer for payment details'}];
-export const STORE_MENU={keyboard:[[{text:'🛒 Buy'}],[{text:'👤 Profile'},{text:'🧾 Purchase history'}],
+export const STORE_MENU={keyboard:[[{text:'🛍 Products'}],[{text:'👤 Profile'},{text:'🧾 Purchase history'}],
   [{text:'💬 Support'},{text:'🛡 Warranty'}]],resize_keyboard:true,is_persistent:true};
+export const OPERATOR_MENU={...STORE_MENU,keyboard:[[{text:'➕ Add lead'}],...STORE_MENU.keyboard]};
+export const QUICK_ADD_URL='https://atlascrm-c5722.web.app/?quick-add=1';
 export function shopContactUrl(value='') {
   if(!value)return '';
   const url=new URL(value);
@@ -42,9 +44,9 @@ export class TelegramShop {
     this.checkout=payments?new ManualCheckoutConversation({orders,api,catalog,payments,adminIds,supportUrl:this.supportUrl}):null;
   }
   contactRows(){return this.supportUrl?[[{text:'Contact admin to order',url:this.supportUrl}]]:[];}
-  detail(product) {
-    const detail=productMessage(product,this.channelUrl);
-    if(product.stock!=='out'&&Number.isFinite(product.price)&&product.price>0&&/^[A-Za-z0-9_-]{1,48}$/.test(product.id))detail.reply_markup.inline_keyboard.unshift([{text:'Create order request',callback_data:'buy:'+product.id}]);
+  detail(product,freshness) {
+    const detail=productMessage(product,this.channelUrl,freshness);
+    if(product.stock!=='out'&&Number.isFinite(product.price)&&product.price>0&&/^[A-Za-z0-9_-]{1,48}$/.test(product.id))detail.reply_markup.inline_keyboard.unshift([{text:'🛒 Request this product',callback_data:'buy:'+product.id}]);
     detail.reply_markup.inline_keyboard.push(...this.contactRows());return detail;
   }
   async handle(update) {
@@ -52,15 +54,19 @@ export class TelegramShop {
     if(!message||message.chat?.type!=='private'||!user||user.is_bot||message.chat.id!==user.id)return false;
     if(this.checkout&&await this.checkout.handle(update))return true;
     const buyer=user.id;const text=String(message.text||'').trim();const data=callback?.data||'';
-    const command=/^\/(start|menu|products|profile|history|payment|support|wallet|api|warranty|order|cancel|orders|approve|reject|fulfill)(?:@([A-Za-z0-9_]+))?(?:\s+([\s\S]+))?$/i.exec(text);
-    const menu={'🛒 Buy':'products','🛍 Products':'products','👤 Profile':'profile','🧾 Purchase history':'history','👛 Wallet':'wallet','🔌 API':'api','💬 Support':'support','🛡 Warranty':'warranty'}[text];
+    const command=/^\/(start|menu|products|profile|history|payment|support|wallet|api|warranty|order|cancel|orders|approve|reject|fulfill|addlead)(?:@([A-Za-z0-9_]+))?(?:\s+([\s\S]+))?$/i.exec(text);
+    const menu={'➕ Add lead':'addlead','🛒 Buy':'products','🛍 Products':'products','👤 Profile':'profile','🧾 Purchase history':'history','👛 Wallet':'wallet','🔌 API':'api','💬 Support':'support','🛡 Warranty':'warranty'}[text];
     const action=command?.[1]?.toLowerCase()||menu;let args=command?.[3]?.trim()||'';
     if(command?.[2]&&command[2].toLowerCase()!==this.username.toLowerCase())return false;
-    if(!action&&!/^(buy:|groups:|family:|product:|review:)/.test(data))return false;
+    if(!action&&!/^(buy:|groups:|family:|product:|refresh:|review:)/.test(data))return false;
     if(callback)await this.api.call('answerCallbackQuery',{callback_query_id:callback.id});
     const send=body=>this.api.call('sendMessage',{chat_id:buyer,...body,link_preview_options:{is_disabled:true}});
-    const basic=(text,inline)=>send({text,reply_markup:inline?{inline_keyboard:inline}:STORE_MENU});
+    const basic=(text,inline)=>send({text,reply_markup:inline?{inline_keyboard:inline}:this.admins.has(String(buyer))?OPERATOR_MENU:STORE_MENU});
     try {
+      if(action==='addlead'){
+        if(!this.admins.has(String(buyer)))throw new ShopError('Admin access required');
+        return basic('Add lead in Atlas CRM. Paste the phone number or username copied from WhatsApp. Sign in with your Atlas operator account if asked.',[[{text:'➕ Add lead',url:QUICK_ADD_URL}]]);
+      }
       if(action==='start'&&args.startsWith('r_')){
         if(!this.partners)return basic('Referral tracking is unavailable. Use /products to continue shopping.');
         try{const referral=await this.partners.start(args.slice(2),buyer);args=referral.productId?'product_'+referral.productId:'shop';}
@@ -104,12 +110,14 @@ export class TelegramShop {
         const explanation={support:'Contact admin with the product reference or order number.',wallet:'This shop has no customer wallet or stored credit balance. Payments are arranged with admin and reviewed manually.',api:'Customer API access is not offered. Supplier credentials stay private.',warranty:'Terms vary by listing. Confirm the selected product’s exact warranty with admin.'}[action];
         return basic(explanation,this.contactRows());
       }
-      const {products,stale}=await this.catalog.list();
-      const productId=data.startsWith('product:')?data.slice(8):action==='start'&&args.startsWith('product_')?args.slice(8):null;
+      const {products,stale,fetchedAt}=await this.catalog.list();
+      const refresh=data.startsWith('refresh:');
+      const productId=data.startsWith('product:')||refresh?data.slice(8):action==='start'&&args.startsWith('product_')?args.slice(8):null;
       if(productId){
         const product=products.find(p=>p.id===productId);
         if(!product)return send({text:'Listing unavailable. Use /products to refresh.'});
-        const image=telegramProductImage(product);const detail=this.detail(product);
+        const image=telegramBrandImage(productFamily(product))||telegramProductImage(product);const detail=this.detail(product,{stale,fetchedAt});
+        if(refresh)return this.api.call('editMessageText',{chat_id:buyer,message_id:message.message_id,...detail,link_preview_options:{is_disabled:true}});
         if(image) {
           try{await this.api.call('sendPhoto',{chat_id:buyer,photo:image,caption:product.name.slice(0,180)+'\n'+formatCatalogPrice(product)});}
           catch(error){if(!error.confirmedFailure||error.retryAfter)throw error;}
@@ -119,13 +127,22 @@ export class TelegramShop {
       if(data.startsWith('buy:')) {
         if(stale)throw new ShopError('Live stock/price refresh is unavailable. Please contact admin before requesting this order.');
         if(!this.admins.size||!this.supportUrl)throw new ShopError('Ordering is not configured yet. Contact channel admin.');
-        const order=await this.orders.create(buyer,products.find(p=>p.id===data.slice(4)),update.update_id);
+        const selected=products.find(p=>p.id===data.slice(4));
+        if(this.catalog.verifyStock){try{await this.catalog.verifyStock(selected);}catch{throw new ShopError('Stock or price changed. Refresh the catalog before requesting this product.');}}
+        const order=await this.orders.create(buyer,selected,update.update_id);
         await basic(orderSummary(order)+'\nContact admin first to confirm stock, price and payment instructions. This request does not reserve stock.\nAfter arranging payment, send:\n/payment '+order.id+' YOUR_TRANSACTION_REFERENCE\nDo not send passwords or payment credentials.\nQuote expires in 24 hours.',this.contactRows());
         if(order.isNew)for(const admin of this.admins){try{await this.api.call('sendMessage',{chat_id:Number(admin),text:'New order request\n'+orderSummary(order)+'\nNo payment has been verified. Use /orders to view active orders.'});}catch{}}
         return true;
       }
       const family=/^family:([^:]+):(\d+)$/.exec(data);
-      if(family)return send(familyMenu(products,family[1],Number(family[2])));
+      if(family){
+        const image=telegramBrandImage(family[1]);
+        if(image) {
+          try{await this.api.call('sendPhoto',{chat_id:buyer,photo:image,caption:family[1]+' · Atlas Market'});}
+          catch(error){if(!error.confirmedFailure||error.retryAfter)throw error;}
+        }
+        return send(familyMenu(products,family[1],Number(family[2])));
+      }
       if(action==='start'||action==='menu')await basic('Welcome to Atlas Market. Browse products, create an order request and contact admin. Payment references are reviewed by a human before fulfillment.');
       return send(groupMenu(products,Number(/^groups:(\d+)$/.exec(data)?.[1]||0)));
     }catch(error){if(error instanceof ShopError)return basic(error.message);throw error;}

@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { parseHTML } from 'linkedom';
 import { normalizeProduct } from '../server/catalog.mjs';
 import { groupMenu, familyMenu, productMessage, SHOP_MENU, TelegramApi, TelegramCatalogBot } from '../server/telegram-catalog.mjs';
+import {readableDescription} from '../server/telegram-presentation.mjs';
 
 const product = normalizeProduct({ productId: 'canva_1', name: 'Canva Pro', productType: 'slot',
   price: { amount: 10, currency: 'USD' }, availability: { available: 5 }, description: 'A sample listing' });
@@ -21,11 +22,11 @@ test('bot menu has three-column product buttons and reference-style persistent n
   for (const row of menu.reply_markup.inline_keyboard) for (const button of row) assert.ok(Buffer.byteLength(button.callback_data) <= 64);
 });
 test('bot and website use the same marked-up price and group destination', () => {
-  assert.equal(product.price, 11);
-  assert.match(familyMenu([product], 'Canva').text, /\$11.00/);
-  assert.equal(familyMenu([product], 'Canva').reply_markup.inline_keyboard[0][0].text,'$11.00 · Canva Pro');
+  assert.equal(product.price, 12);
+  assert.match(familyMenu([product], 'Canva').text, /\$12.00/);
+  assert.equal(familyMenu([product], 'Canva').reply_markup.inline_keyboard[0][0].text,'$12.00 · Canva Pro');
   const detail = productMessage(product, groupUrl);
-  assert.match(detail.text, /\$11.00/);
+  assert.match(detail.text, /\$12.00/);
   assert.equal(detail.reply_markup.inline_keyboard[0][0].url, groupUrl);
 });
 test('group variants paginate without losing listings', () => {
@@ -56,9 +57,25 @@ test('callback edits menu and shows a Telegram enquiry link without purchasing',
   const bot = new TelegramCatalogBot({ api: { call: async (method, payload) => calls.push({ method, payload }) },
     catalog: { list: async () => ({ products: [product] }) }, allowedChatIds: [chat.id], groupUrl });
   await bot.handleUpdate({ callback_query: { id: 'demo', from: { id: 1 }, data: 'product:canva_1', message: { chat, message_id: 10 } } });
-  assert.deepEqual(calls.map(call => call.method), ['answerCallbackQuery', 'editMessageText']);
-  assert.match(calls[1].payload.text, /\$11.00/);
-  assert.equal(calls[1].payload.reply_markup.inline_keyboard[0][0].url, groupUrl);
+  assert.deepEqual(calls.map(call => call.method), ['answerCallbackQuery', 'sendPhoto', 'editMessageText']);
+  assert.match(calls[1].payload.photo, /domain=canva.com/);
+  assert.match(calls[2].payload.text, /\$12.00/);
+  assert.equal(calls[2].payload.parse_mode,'HTML');
+  assert.equal(calls[2].payload.reply_markup.inline_keyboard[0][0].url, groupUrl);
+});
+
+test('product descriptions use escaped headings, spaced bullets and explicit stale pricing',()=>{
+  const detail=productMessage({...product,name:'Canva <plan> & more',description:'<p>Do not share your password.</p><p>Plan &amp; terms</p>👉 First item 👉 Second item<script>bad()</script>'},groupUrl,{stale:true});
+  assert.equal(detail.parse_mode,'HTML');
+  assert.match(detail.text,/<b>Canva &lt;plan&gt; &amp; more<\/b>/);
+  assert.match(detail.text,/Do not share your password\./);
+  assert.match(detail.text,/\n\n👉 First item\n\n👉 Second item/);
+  assert.doesNotMatch(detail.text,/<script>|bad\(\)|<p>/);
+  assert.match(detail.text,/Saved catalog/);
+  assert.ok(detail.reply_markup.inline_keyboard.flat().some(b=>b.text.includes('Refresh price')&&b.callback_data==='refresh:canva_1'));
+  assert.match(readableDescription('x'.repeat(5000)),/Ask support for the full description/);
+  const {document}=parseHTML('<div>'+productMessage({...product,description:'<'.repeat(5000)},groupUrl).text+'</div>');
+  assert.ok(document.querySelector('div').textContent.length<4096);
 });
 test('wallet menu explains manual ordering without reading the supplier wallet', async () => {
   let fetched = false; const calls = [];
@@ -102,4 +119,11 @@ test('local shop preview preserves a newer menu choice when an older catalog req
   complete(); await pending;
   assert.match(document.querySelector('[data-shop-message]').textContent, /does not collect payment/);
   assert.equal(document.querySelector('[data-shop-inline] a').getAttribute('href'), groupUrl);
+});
+
+
+test('refreshing an unchanged Telegram detail is successful without hiding other errors',async()=>{
+  const api=new TelegramApi('12345:fictional_token',{fetchImpl:async()=>({ok:false,json:async()=>({ok:false,error_code:400,description:'Bad Request: message is not modified'})})});
+  assert.deepEqual(await api.call('editMessageText'),{unchanged:true});
+  await assert.rejects(api.call('sendMessage'),/telegram_request_failed/);
 });

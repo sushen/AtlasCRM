@@ -1,0 +1,16 @@
+import {readFile,readdir} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const root=new URL('../.firebase/preview-public/',import.meta.url);
+const read=path=>readFile(new URL(path,root),'utf8');
+assert.match(await read('index.html'),/connect-src 'self'/);
+assert.match(await read('index.html'),/atlas-preview-revision/);
+assert.match(await read('js/firebase.js'),/configured=false/);
+assert.ok(!(await read('js/firebase.js')).includes('gstatic.com'));
+assert.match(await read('js/services/store.js'),/atlas_branch_preview_store/);
+assert.match(await read('js/services/inventory-api.js'),/DEMO-ONLY/);
+assert.ok(!(await read('js/services/inventory-api.js')).includes('fetch('));
+assert.ok(!(await read('js/services/catalog-api.js')).includes('fetch('));
+assert.match(await read('js/services/whatsapp-api.js'),/Sending is disabled/);
+assert.match(await read('js/preview/runtime.js'),/FICTIONAL DATA ONLY/);
+for(const entry of await readdir(root))assert.ok(!['server','worker','docs','node_modules','.env','.worker-private'].includes(entry));
+console.log('Preview isolation checks passed: no live authentication/data adapters, same-origin network policy, separate browser data and fictional inventory.');

@@ -40,10 +40,13 @@ function setup(overrides={},storage=memory()) {
 const screenshot={fileId:'fixture_screenshot_123',fileUniqueId:'fixture_unique_123',messageId:2,fileSize:2048};
 
 test('retail markup applies once, explicit 1:1 conversion and receiving snapshot are immutable',async()=>{
-  const s=setup();const order=await s.create();assert.equal(product.price,11);assert.equal(order.totalAmount,11);assert.equal(order.currency,'USDT');
+  const s=setup();const order=await s.create();assert.equal(product.price,12);assert.equal(order.totalAmount,12);assert.equal(order.currency,'USDT');
   assert.equal(order.paymentQuote.sourceCurrency,'USD');assert.equal(order.paymentQuote.conversionRate,'1');assert.equal(order.paymentStatus,P.PENDING);assert.equal(order.deliveryStatus,'NOT_DELIVERED');
   const other=new BinanceManualPaymentProvider(paymentConfiguration({...env,BINANCE_PAY_UID:'1234',BINANCE_PAY_NAME:'ChangedReceiver'}),s.orders);
-  const instructions=await other.createPaymentInstructions(order);assert.match(instructions.text,/FictionalReceiver/);assert.match(instructions.text,/11.00 USDT/);
+  const instructions=await other.createPaymentInstructions(order);assert.match(instructions.text,/FictionalReceiver/);assert.match(instructions.text,/12.00 USDT/);
+  const scarce=normalizeProduct({productId:product.id,name:product.name,price:{amount:10,currency:'USD'},availability:{available:1}});
+  assert.equal(s.payments.quote(scarce).totalAmount,14);
+  assert.equal((await s.orders.getForBuyer(order.id,1)).totalAmount,12);
   assert.equal(instructions.photo,env.BINANCE_PAY_QR_FILE_ID);assert.equal(instructions.paymentLink,null);assert.ok(!instructions.text.includes('pay.binance.com'));
 });
 test('missing rates, unsupported conversion and unverified/arbitrary links fail closed',()=>{
@@ -57,7 +60,7 @@ test('missing rates, unsupported conversion and unverified/arbitrary links fail 
   assert.throws(()=>setup({PAYMENT_CURRENCY:'EUR'}).payments.quote(product),/conversion/);
 });
 test('decimal conversion is deterministic and no fictitious Binance URL is constructed',()=>{
-  const s=setup({PAYMENT_USD_USDT_RATE:'1.25'});assert.equal(s.payments.quote(product).totalAmount,13.75);
+  const s=setup({PAYMENT_USD_USDT_RATE:'1.25'});assert.equal(s.payments.quote(product).totalAmount,15);
   const small=setup({PAYMENT_USD_USDT_RATE:'0.33333333'}).payments.quote({...product,price:0.1});assert.equal(small.totalMinor,'33333');
   const linked=setup({BINANCE_PAY_PAYMENT_LINK:'https://pay.binance.com/fixture-supplied-link',BINANCE_PAY_LINK_VERIFIED:'true'});
   assert.equal(linked.payments.quote(product).paymentLink,'https://pay.binance.com/fixture-supplied-link');
@@ -73,9 +76,9 @@ test('checkout buttons, QR instructions, I Have Paid dialogue and plain referenc
   const s=setup();await s.shop.handle(s.callback(1,'buy:fixture_product',10));const order=(await s.orders.list(1))[0];
   const created=s.calls.find(c=>c.payload.chat_id===1&&c.payload.parse_mode==='HTML'&&c.payload.text?.includes('<b>💳 Binance Pay</b>'));
   assert.deepEqual(created.payload.reply_markup.inline_keyboard.slice(2,5).map(row=>row[0].text),['Pay with Binance','I Have Paid','Cancel Order']);
-  assert.match(created.payload.text,/<code>11.00<\/code> <b>USDT<\/b>/);
+  assert.match(created.payload.text,/<code>12.00<\/code> <b>USDT<\/b>/);
   const copies=created.payload.reply_markup.inline_keyboard.flat().filter(b=>b.copy_text);
-  assert.deepEqual(copies.map(b=>b.copy_text.text),[env.BINANCE_PAY_UID,env.BINANCE_PAY_NAME,'11.00',order.id]);
+  assert.deepEqual(copies.map(b=>b.copy_text.text),[env.BINANCE_PAY_UID,env.BINANCE_PAY_NAME,'12.00',order.id]);
   assert.ok(copies.every(b=>!b.callback_data&&!b.url));
   await s.shop.handle(s.callback(1,'pay:'+order.id,11));assert.ok(s.calls.some(c=>c.method==='sendPhoto'&&c.payload.photo===env.BINANCE_PAY_QR_FILE_ID));
   await s.shop.handle(s.callback(1,'paid:'+order.id,12));assert.equal((await s.orders.getDialog(1)).orderId,order.id);

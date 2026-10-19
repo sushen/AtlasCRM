@@ -10,6 +10,12 @@ import {PartnerProgram,PartnerError} from '../server/partners/program.mjs';
 import {partnerReport,reportCsv} from '../server/partners/report.mjs';
 import {partnerPerformance} from '../server/partners/performance.mjs';
 import {PartnerFirestore} from './partner-firestore.mjs';
+import {InventoryProgram,InventoryError} from '../server/inventory/program.mjs';
+import {InventoryReferences} from './inventory-firestore.mjs';
+import {NamCatalog} from '../server/suppliers/nam.mjs';
+import {combinedCatalog} from '../server/inventory/combined-catalog.mjs';
+import {supplierStates} from '../server/inventory/suppliers.mjs';
+import {CATALOG_DEFAULT_MARKUP_PERCENT,CATALOG_STOCK_MARKUP_TIERS} from '../js/utils/catalog-pricing.js';
 
 const reply = (data, status=200) => Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
 // Single coordinator per Atlas Worker: cache and replay/disable state survive eviction.
@@ -32,7 +38,25 @@ export class AtlasCoordinator {
     if(!alarm||alarm>Date.now()+30000)await this.state.storage.setAlarm(Date.now()+30000);
   }
   async enabled() { return (await this.state.storage.get('bot-enabled')) ?? (this.env.TELEGRAM_BOT_ENABLED === 'true'); }
+  supplierReadiness(){return {canboso:Boolean(supplierConfiguration(this.env).key),nam:this.env.MULTI_SUPPLIER_ENABLED==='true'&&Boolean(this.env.NAM_RESELLER_TOKEN)&&Boolean(this.env.NAM_RESELLER_CURRENCY)};}
   async catalog() {
+    const states=await supplierStates(this.state.storage,this.supplierReadiness()),currentEnabled=states.find(s=>s.id==='canboso').enabled,namEnabled=states.find(s=>s.id==='nam').enabled;
+    const empty={products:[],fetchedAt:new Date().toISOString(),storefront:storefrontSettings(this.env),pricing:{mode:'stock_tiers',defaultMarkupPercent:CATALOG_DEFAULT_MARKUP_PERCENT,tiers:CATALOG_STOCK_MARKUP_TIERS}};
+    if(!currentEnabled&&!namEnabled)return empty;
+    if(namEnabled&&this.env.MULTI_SUPPLIER_ENABLED!=='true')throw Error('Enabled supplier is not configured.');
+    if(this.env.MULTI_SUPPLIER_ENABLED==='true'){
+      // NAM requires fresh no-store catalog reads. Never use the legacy six-hour fallback.
+      const current=new SupplierCatalog({...supplierConfiguration(this.env),settings:storefrontSettings(this.env)});
+      const nam=namEnabled?new NamCatalog({token:this.env.NAM_RESELLER_TOKEN,currency:this.env.NAM_RESELLER_CURRENCY}):null;
+      const [catalog,newOffers,mappings]=await Promise.all([currentEnabled?current.list():Promise.resolve(empty),namEnabled?nam.offers():Promise.resolve([]),this.state.storage.list({prefix:'iv:map:',limit:501})]);
+      if(mappings.size>500)throw Error('Supplier mapping limit exceeded.');
+      const references=new InventoryReferences(this.env),maps=[...mappings.values()].filter(m=>namEnabled&&m.sourceId==='nam'||currentEnabled&&m.sourceId==='canboso');
+      const products=await Promise.all([...new Set(maps.filter(m=>m.enabled).map(m=>m.productId))].map(id=>references.read('products',id)));
+      if(products.some(p=>!p))throw Error('Mapped CRM product no longer exists.');
+      const merged=combinedCatalog({products:catalog.products,offers:currentEnabled?current.offerSnapshot:[]},newOffers,maps,products);
+      this.combinedSelections=merged.selections;
+      return {...catalog,products:merged.products,fetchedAt:new Date().toISOString(),pricing:{...catalog.pricing,basis:'cheapest_available_supplier_cost'},stale:false};
+    }
     const saved=await this.state.storage.get('catalog');
     if(saved?.until>Date.now()) return saved.data;
     const fallback=()=>saved?.until>Date.now()-6*3600000?{...saved.data,stale:true,storefront:storefrontSettings(this.env)}:null;
@@ -50,6 +74,17 @@ export class AtlasCoordinator {
       throw Error('catalog_unavailable');
     }
   }
+  async verifyCatalogStock(product){
+    if(this.env.MULTI_SUPPLIER_ENABLED!=='true')return;
+    const fresh=await this.catalog(),latest=fresh.products.find(p=>p.id===product.id);
+    if(!latest||latest.price!==product.price||latest.currency!==product.currency||latest.stock==='out')throw Error('Catalog quote changed.');
+    const selection=this.combinedSelections?.get(product.id);
+    if(selection?.sourceId==='nam'){
+      const nam=new NamCatalog({token:this.env.NAM_RESELLER_TOKEN,currency:this.env.NAM_RESELLER_CURRENCY});
+      const stock=await nam.checkStock(selection.offerId);
+      if(!stock.available||stock.refreshCatalog)throw Error('Supplier stock changed. Refresh the catalog before creating an order.');
+    }
+  }
   async rate(key, maximum) {
     await this.scheduleCleanup();
     const now=Date.now(); const saved=await this.state.storage.get(key);
@@ -59,6 +94,16 @@ export class AtlasCoordinator {
   }
   async handle(request) {
     const path=new URL(request.url).pathname;
+    if(path==='/inventory'){
+      if(this.env.INVENTORY_ENABLED!=='true')return reply({code:'inventory_disabled'},503);
+      try{
+        const {claims,command,summary,value,query}=await request.json();
+        if(claims?.atlasOperator!==true||!claims.sub)return reply({code:'operator_required'},403);
+        if(!await this.rate('inventory-global',100)||!await this.rate('client:inventory:'+claims.sub,40))return reply({message:'Too many inventory requests. Retry shortly.'},429);
+        const inventory=new InventoryProgram(this.state.storage,{keyring:this.env.INVENTORY_KEYRING,references:new InventoryReferences(this.env),supplierReadiness:this.supplierReadiness()});
+        return reply(command?await inventory.command(claims,value):summary?await inventory.summary(claims):await inventory.list(claims,query));
+      }catch(error){return reply({code:'inventory_request_rejected',message:error instanceof InventoryError?error.message:'Private inventory is unavailable. No credentials were returned.'},error instanceof InventoryError?400:503);}
+    }
     if(path==='/partner-performance'){
       if(this.env.PARTNER_TRACKING_ENABLED!=='true')return reply({code:'partner_tracking_disabled'},503);
       try{return reply(await partnerPerformance(this.state.storage,{days:Number(new URL(request.url).searchParams.get('days')||7)}));}
@@ -129,7 +174,7 @@ export class AtlasCoordinator {
         const partners=partnerEnabled?new PartnerProgram(this.state.storage,{secret:this.env.PARTNER_HASH_SECRET}):null;
         const orders=new ShopOrders(this.state.storage,{adminIds,partnerSecret:partnerEnabled?this.env.PARTNER_HASH_SECRET:''});
         const payments=new BinanceManualPaymentProvider(paymentConfiguration(this.env),orders);
-        const shop=this.env.TELEGRAM_SHOP_ENABLED==='true'?new TelegramShop({api,orders,payments,partners,catalog:{list:()=>this.catalog()},adminIds,
+        const shop=this.env.TELEGRAM_SHOP_ENABLED==='true'?new TelegramShop({api,orders,payments,partners,catalog:{list:()=>this.catalog(),verifyStock:product=>this.verifyCatalogStock(product)},adminIds,
           supportUrl:this.env.TELEGRAM_SHOP_SUPPORT_URL||'',channelUrl:storefrontSettings(this.env).telegramUrl,username:this.env.TELEGRAM_BOT_USERNAME||'AtlasCrmMarketBot'}):null;
         if(!shop||!await shop.handle(update))await bot.handleUpdate(update);
       }catch(error){

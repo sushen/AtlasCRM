@@ -1,5 +1,12 @@
 # Google sign-in and private CRM access
 
+## Quick Add return destination (released 2026-10-19)
+
+`/?quick-add=1` retains its destination through `login.html?next=quick-add`.
+After either supported sign-in, only a boolean `atlasOperator:true` returns to
+Quick Add. Other accounts go to Market. This adds one fixed destination to the
+existing allowlist, with no arbitrary redirects or security-rule changes.
+
 Latest decision on 2026-10-14: the user removed the login requirement for Market.
 Products are public information and enquiries go to the Telegram group. Market
 no longer initializes Firebase or displays sign-in/sign-out controls. Google/email

@@ -1,5 +1,41 @@
 # Data Model
 
+## Private owned-stock ledger (prepared 2026-10-19)
+
+Existing Worker SQLite keys `iv:unit`, `iv:secret`, `iv:fingerprint`, `iv:purchase`,
+`iv:receipt`, `iv:audit`, `iv:map` and `iv:supplier` hold private inventory metadata, AES-GCM
+credentials, keyed duplicate claims, unique purchase allocation, idempotency,
+audit and exact supplier mappings. References point to existing Firestore product,
+customer and purchase IDs; no Firestore schema migration or browser rule change.
+Inventory is not included in public supplier stock. See `INVENTORY.md` for exact
+fields, states, encryption envelope and cross-store consistency limits.
+
+## Username-only customers (2026-10-19)
+
+Manual handle leads add `whatsappUsername` (`@` display) and
+`normalizedWhatsAppUsername` (lowercase without `@`). Their `phone`,
+`normalizedPhone` and `whatsappNumber` are null. Matching uses the corresponding
+non-null namespace and retains the internal customer ID for all relationships.
+Legacy phone records need no migration. See `WHATSAPP_USERNAMES.md` / ADR 0005.
+
+## Linked manual customer purchases (released 2026-10-19)
+
+Purchase records now snapshot `productName`, `paidAmount`, `startDate` and nullable
+`expiryDate` in addition to existing purchase fields. A linked expiring subscription
+carries `purchaseId`, `productName` and `currency`. IDs are stable per manual save
+request; a Firestore transaction creates all linked records/activity and customer
+qualification atomically with server timestamps. Old records are displayed without
+inventing missing details. No migration or security-rule change is required.
+See [CUSTOMER_PURCHASES.md](CUSTOMER_PURCHASES.md).
+
+## Quick Add metadata (released 2026-10-19)
+
+Manual mobile entry reuses `customers` without a schema migration: source
+`WhatsApp Quick Add`, sourceGroup `Manual enquiry`, status `new`, customerStatus
+`lead`, tags `whatsapp-lead` and `quick-add`. New customer and `lead_added` activity
+commit together with server timestamps. Duplicate lookup returns the existing
+record without writes. See [QUICK_ADD.md](QUICK_ADD.md).
+
 ## Partner extension (released 2026-10-16)
 
 Existing orders add an optional immutable `partnerAttribution` snapshot containing

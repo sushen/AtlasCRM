@@ -1,5 +1,5 @@
 // Read-only supplier catalog. No buyer identity, balance, orders or delivery data.
-import { retailPrice, CATALOG_MARKUP_PERCENT } from '../js/utils/catalog-pricing.js';
+import { retailPrice, CATALOG_DEFAULT_MARKUP_PERCENT, CATALOG_STOCK_MARKUP_TIERS } from '../js/utils/catalog-pricing.js';
 import { storefrontSettings, supplierConfiguration } from './catalog-settings.mjs';
 export class CatalogError extends Error {
   constructor(code, status = 502) { super(code); this.code = code; this.status = status; }
@@ -17,7 +17,7 @@ export function normalizeProduct(product) {
     id: String(product.productId || ''), name: String(product.name || 'Unnamed product'),
     description: String(product.description || ''), image,
     type: ['account', 'slot', 'upgrade_account'].includes(product.productType) ? product.productType : 'other',
-    price: retailPrice(number(product.price?.amount), String(product.price?.currency || '')),
+    price: retailPrice(number(product.price?.amount), String(product.price?.currency || ''), available),
     currency: String(product.price?.currency || ''),
     available, stock: available === null ? 'unknown' : available > 0 ? 'available' : 'out',
     sold: number(product.availability?.sold),
@@ -64,9 +64,14 @@ export class SupplierCatalog {
       if (!response.ok) throw new CatalogError('catalog_supplier_unavailable');
       const body = await response.json();
       if (body.success !== true || !Array.isArray(body.products)) throw new CatalogError('catalog_invalid_response');
+      // Kept on the server adapter only; never attached to the public catalog result.
+      this.offerSnapshot=body.products.filter(p=>p&&typeof p==='object').map(p=>({id:String(p.productId||''),sourceId:'canboso',name:String(p.name||'Unnamed product'),
+        unitCost:typeof p.price?.amount==='number'&&Number.isFinite(p.price.amount)&&p.price.amount>=0?p.price.amount:null,currency:String(p.price?.currency||''),
+        available:Number.isSafeInteger(p.availability?.available)&&p.availability.available>=0?p.availability.available:null,fetchedAt:this.now()}));
       const result = { products: body.products.filter(p => p && typeof p === 'object').map(normalizeProduct),
         fetchedAt: new Date(this.now()).toISOString(), currency: String(body.walletCurrency || ''),
-        storefront: this.settings, pricing: { markupPercent: CATALOG_MARKUP_PERCENT } };
+        storefront: this.settings, pricing: { mode: 'stock_tiers',
+          defaultMarkupPercent: CATALOG_DEFAULT_MARKUP_PERCENT, tiers: CATALOG_STOCK_MARKUP_TIERS } };
       this.cached = result; this.expires = this.now() + 60000;
       return result;
     } catch (error) {

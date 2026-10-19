@@ -1,5 +1,12 @@
 # Development
 
+## Branch-first workflow (2026-10-19)
+
+The operator requires local tests → online feature-branch preview → explicit
+acceptance before merging to master. CI checks and an isolated fictional-data
+GitHub Pages preview are prepared; no production deployment occurs on branch push.
+See [CI_CD.md](CI_CD.md) for commands, preview limits and promotion procedure.
+
 ## Prerequisites
 
 A modern browser is required. The optional WhatsApp backend uses Node 20.19+ and npm (`npm ci --ignore-scripts`). Firebase CLI is needed only for Firebase deployment. Browser source remains build-free; `npm run build:hosting` stages only public assets for Hosting.

@@ -5,7 +5,7 @@ import { SupplierCatalog, normalizeProduct } from '../server/catalog.mjs';
 import { createAtlasServer } from '../server/http.mjs';
 import { filterCatalog, renderCatalog } from '../js/views/catalog.js';
 import { catalogGroups, productFamily } from '../js/utils/catalog-groups.js';
-import { retailPrice } from '../js/utils/catalog-pricing.js';
+import { retailPrice, catalogMarkupPercent } from '../js/utils/catalog-pricing.js';
 import { featuredProducts } from '../js/utils/catalog-featured.js';
 import { telegramGroupUrl } from '../server/catalog-settings.mjs';
 import {catalogProductLink,catalogShopLink} from '../js/utils/catalog-links.js';
@@ -88,7 +88,7 @@ test('catalog renders escaped supplier content and applies search without custom
   } finally { globalThis.document = previous; }
 });
 
-test('retail pricing applies ten percent once with currency rounding', () => {
+test('retail pricing defaults to ten percent with currency rounding', () => {
   assert.equal(retailPrice(10, 'USD'), 11);
   assert.equal(retailPrice(12.5, 'USD'), 13.75);
   assert.equal(retailPrice(0.39, 'USD'), 0.43);
@@ -98,6 +98,40 @@ test('retail pricing applies ten percent once with currency rounding', () => {
   assert.equal(retailPrice(null), null);
   assert.equal(retailPrice(-1), null);
   assert.equal(normalizeProduct(raw).price, 13.75);
+});
+
+test('scarcity tiers include every boundary and fall back for invalid stock', () => {
+  for (const [stock, percent, price] of [[1,40,14],[2,30,13],[4,30,13],[5,20,12],[10,20,12],[11,10,11],[100,10,11]]) {
+    assert.equal(catalogMarkupPercent(stock), percent);
+    assert.equal(retailPrice(10, 'USD', stock), price);
+    assert.equal(normalizeProduct({ ...raw, price: { amount: 10, currency: 'USD' }, availability: { available: stock } }).price, price);
+  }
+  for (const stock of [null,undefined,0,-1,1.5,'1',NaN,Infinity]) {
+    assert.equal(catalogMarkupPercent(stock), 10);
+  }
+  assert.equal(retailPrice(0.39, 'USD', 1), 0.55);
+  assert.equal(retailPrice(50001, 'VND', 1), 70001);
+});
+
+test('catalog displays scarcity prices and refreshes them when stock changes', async () => {
+  const { document } = parseHTML('<html><body><div id="view"></div></body></html>');
+  const previous = globalThis.document; globalThis.document = document;
+  let stock = 1;
+  const service = new SupplierCatalog({ key: 'fictional-secret', now: () => stock === 1 ? 0 : 61000,
+    fetchImpl: async () => ({ ok: true, json: async () => ({ success: true,
+      products: [{ ...raw, availability: { available: stock } }] }) }) });
+  try {
+    const el = document.querySelector('#view');
+    const first = await service.list();
+    assert.equal(first.pricing.mode, 'stock_tiers');
+    await renderCatalog(el, { fetchImpl: async () => ({ ok: true, json: async () => first }) });
+    el.querySelector('[data-all]').click();
+    assert.match(el.querySelector('.catalog-price').textContent, /\$17.50/);
+    assert.match(el.textContent, /1 in stock/);
+    stock = 11;
+    const refreshed = await service.list();
+    assert.equal(refreshed.products[0].price, 13.75);
+  } finally { globalThis.document = previous; }
 });
 test('Telegram destination accepts invite links and rejects credential or script URLs', () => {
   assert.equal(telegramGroupUrl('https://t.me/+test_invite'), 'https://t.me/+test_invite');
@@ -111,7 +145,7 @@ test('featured products retain requested order and prefer actual available varia
     normalizeProduct({ ...raw, name: 'Gemini Advanced' })];
   const features = featuredProducts(products);
   assert.deepEqual(features.map(f => f.name), ['ChatGPT', 'Claude', 'Gemini', 'Canva', 'Notion']);
-  assert.equal(features[0].product.price, 13.75);
+  assert.equal(features[0].product.price, 15);
   assert.equal(features[3].product, null);
 });
 test('storefront links to the configured group and displays retail variant price', async () => {

@@ -1,5 +1,21 @@
 # Local supplier catalog
 
+## Second-source aggregation (prepared 2026-10-19; disabled)
+
+Operator supplied the NAM reseller API and confirmed USD. Each supplier has a
+persisted operator on/off switch: disabled sources are not fetched and contribute
+no products/prices/stock; switching invalidates cached listings. NAM defaults off
+even when a token exists. All-off yields an empty catalog. Owned inventory is
+unchanged by these switches. Public availability is
+combined supplier stock, excluding private owned units. Explicit product/term and
+stock-pool mappings choose the cheapest in-stock equivalent COST and apply the
+current Atlas margin once to aggregate stock. Unknown/unlimited counts remain
+unknown; cross-currency mappings fail without a conversion rule. New product/stock
+GETs are fresh/no-store and checkout rechecks current selection. Current public
+single-source behavior stays unchanged until multi-source activation. Provider
+health/products currently return 502 and its full product wrapper/token are not
+verified. No upstream balance/order call exists. See `INVENTORY.md`.
+
 ## Shop navigation — 2026-10-15
 
 Atlas website general shop buttons resolve the configured Atlas channel URL to
@@ -47,10 +63,27 @@ hover/focus and respects reduced-motion preferences. Arrow buttons and manual
 scrolling remain available. Existing CRM authentication and customer workflows
 are unaffected by the separate local storefront shell.
 
-All exposed prices are now retail prices: **supplier price × 1.10**, rounded to
-the currency's minor units, including zero-decimal currencies such as VND. The
-adapter applies this once; the browser and Telegram only format the result.
-Examples: USD 10 → USD 11; USD 12.50 → USD 13.75; USD 0.39 → USD 0.43.
+Retail prices use a scarcity markup on supplier unit price, based on the latest
+available stock count:
+
+| Units available | Markup on supplier base price |
+| --- | --- |
+| 1 | 40% |
+| 2–4 | 30% |
+| 5–10 | 20% |
+| 11 or more | 10% |
+
+Unknown, invalid/non-integer and zero counts retain a 10% fallback; zero-stock
+listings remain unavailable to order. Round once to the currency's minor units,
+including zero-decimal currencies such as VND. The adapter applies markup once;
+the browser, Telegram and channel post formatter only format the result. For a
+USD 10 base price the tiers produce USD 14, 13, 12 and 11 respectively. Catalog
+refreshes update prices as supplier stock changes (normal cache: 60 seconds).
+Existing saved order/payment quotes retain their original price. Existing published
+channel posts are static until explicitly republished. The catalog response's
+`pricing` metadata reports `mode: stock_tiers`, `defaultMarkupPercent` and `tiers`
+instead of a single global `markupPercent`.
+
 Displayed ranges cover eligible variants; they are not a single plan's price.
 Featured cards name their actual representative variant and show its exact price.
 

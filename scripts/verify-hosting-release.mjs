@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
 const origin='https://atlascrm-c5722.web.app';
-const assets=['index.html','login.html','js/login.js','js/firebase.js','js/utils/auth-access.js','css/components.css','css/layout.css','js/views/catalog-branding.js','css/catalog.css','js/catalog-preview.js','js/services/catalog-api-config.js','js/services/catalog-api.js','js/views/catalog.js','js/app.js'];
+const assets=['js/views/inventory-summary.js','js/views/inventory.js','js/services/inventory-api.js','js/utils/customer-identity.js','js/views/customer-sales.js','js/utils/customer-sales.js','js/views/quick-add.js','js/services/quick-add.js','js/services/store.js','index.html','login.html','js/login.js','js/firebase.js','js/utils/auth-access.js','css/components.css','css/layout.css','js/views/catalog-branding.js','css/catalog.css','js/catalog-preview.js','js/services/catalog-api-config.js','js/services/catalog-api.js','js/views/catalog.js','js/app.js','js/utils/catalog-pricing.js','js/utils/shop-images.js','js/telegram-preview.js'];
 for(const path of assets) {
   const response=await fetch(origin+'/'+path+'?release-check='+Date.now(),{signal:AbortSignal.timeout(20000)});
   assert.equal(response.status,200,'Live asset missing: '+path);

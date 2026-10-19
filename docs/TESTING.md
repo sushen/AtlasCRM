@@ -1,5 +1,43 @@
 # Testing
 
+## Inventory / second-supplier checks (2026-10-19)
+
+All 183 tests pass, including `tests/inventory.test.mjs`: authenticated vault
+binding/rotation, idempotency, concurrency, reference/expiry/state checks, supplier
+projection and safe HTTP/UI retries. `scripts/inventory-smoke.mjs` exercises real
+signed operator/buyer tokens with mocked Firestore/provider reads in workerd and
+SQLite, encrypted credential lifecycle and changed-stock checkout rejection.
+Supplier switch persistence/cache exclusion and paginated owned-stock summary
+checks also pass; signed runtime checks verify removing one/all sources without
+changing owned stock. The existing manual-payment smoke and Worker dry-run pass. No production order,
+balance read, real credential or customer record is used. See `INVENTORY.md`.
+
+## Username/customer workflow release checks (2026-10-19)
+
+All 166 tests pass. `customer-identity.test.mjs` covers username-only records,
+separate namespaces, case/at-prefix normalization, duplicate history, shared input
+and copy-only contact UI. The 14 identity/sales checks pass after numeric-username
+search isolation. Both real views were inspected at 390px with fictional data.
+Worker dry-run, private-value scan, final Hosting source matching/private-file
+404 checks and live Worker health/catalog/auth/CORS/shop-readiness pass. No real
+customer/purchase mutation or message was used for verification.
+
+## Customer purchase profile checks (2026-10-19)
+
+`tests/customer-sales.test.mjs` covers two-product history, paid totals/currencies,
+real calendar dates and Bangladesh expiry boundaries, normalized search, retry
+idempotency and atomic failure, preserved suppression/history, demo storage failure
+and profile/form rendering. Local 390px QA uses fictional data only. See
+`CUSTOMER_PURCHASES.md`; no real production customer sale was entered.
+
+## Mobile Quick Add checks (2026-10-19)
+
+`npm test` includes `tests/quick-add.test.mjs`: phone normalization and duplicates,
+unchanged history/suppression, atomic customer/activity creation, operator startup
+and fixed auth return routing, form busy/retry states and private Telegram menus.
+Local 390px visual QA uses the real form/CSS with fictional persistence. A real
+phone sign-in/save check remains a post-release operator step. See `QUICK_ADD.md`.
+
 ## Prepared manual checkout (2026-10-15)
 
 104 automated tests passed, including 20 new manual-payment cases and all prior

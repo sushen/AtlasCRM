@@ -12,7 +12,9 @@ test('manual sent confirmations record every attempt and reject missing customer
   const phoneModule=new URL('../js/utils/phone.js',import.meta.url).href;
   const source=(await readFile(new URL('../js/services/store.js',import.meta.url),'utf8'))
     .replace("import * as fb from '../firebase.js';",'const fb={configured:false};')
-    .replace("'../utils/phone.js'",JSON.stringify(phoneModule));
+    .replace("'../utils/phone.js'",JSON.stringify(phoneModule))
+    .replace("'../utils/customer-sales.js'",JSON.stringify(new URL('../js/utils/customer-sales.js',import.meta.url).href))
+    .replace("'../utils/customer-identity.js'",JSON.stringify(new URL('../js/utils/customer-identity.js',import.meta.url).href));
   const store=await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
   const {customer}=await store.createCustomer({name:'Demo Contact',phone:'+8801712345678'});
   await store.transition(customer.id,'contacted');

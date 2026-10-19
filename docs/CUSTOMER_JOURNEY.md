@@ -1,5 +1,39 @@
 # Customer Journey
 
+## Owned-stock assignment (prepared 2026-10-19; disabled)
+
+Record a paid purchase using a saved product, then assign one matching owned stock
+item from Private inventory. Phone and username-only customers work identically.
+Stock and credentials on the purchase card reads its private assignment. Reveal,
+assignment and manual delivery are separate audited actions; no customer message,
+supplier purchase or payment is triggered. Existing history is preserved. See
+`INVENTORY.md` for expiry and reference checks and cross-store limitations.
+
+## Username-only enquiries (2026-10-19)
+
+Copy a WhatsApp handle into Quick Add's phone-or-username field without needing
+a phone. Find the saved lead by username, then attach purchases and product terms
+to the same profile. No communication or sale is inferred by saving/copying a
+handle. Usernames can change and are not automatically merged with phone contacts.
+See `WHATSAPP_USERNAMES.md`.
+
+## Attach products after conversion (released 2026-10-19)
+
+Search the existing lead's phone, open View, then Attach purchased product for
+each product bought. Record total/paid amount, purchase/start/expiry dates or an
+explicit no-expiry choice. The profile shows all purchases, paid totals per currency
+and access dates/status. Saving qualifies the customer while preserving history,
+follow-ups and contact restrictions. No actual charge or supplier purchase occurs.
+See [CUSTOMER_PURCHASES.md](CUSTOMER_PURCHASES.md).
+
+## Mobile manual entry (released 2026-10-19)
+
+Copy a WhatsApp enquiry number into **Add lead** at `/?quick-add=1`; name/notes
+are optional. A new `new` lead records `lead_added` as an explicitly manual event.
+An existing normalized phone opens its profile without changing status, notes,
+follow-ups or history. Neither path proves a reply or sends a message. See
+[QUICK_ADD.md](QUICK_ADD.md).
+
 ## Advertising partner journey (released 2026-10-16)
 
 Registered partner ad → public catalog referral capture → opaque short-lived

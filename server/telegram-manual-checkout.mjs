@@ -95,6 +95,7 @@ export class ManualCheckoutConversation {
         if(!this.admins.size||!this.supportUrl)throw new ShopError('Ordering is not configured; contact admin');
         const catalog=await this.catalog.list();if(catalog.stale)throw new ShopError('Live stock/price refresh is unavailable. Contact admin before paying.');
         const product=catalog.products.find(p=>p.id===buy[1]);if(!product)throw new ShopError('This listing is unavailable');
+        if(this.catalog.verifyStock){try{await this.catalog.verifyStock(product);}catch{throw new ShopError('Stock or price changed. Refresh the catalog before requesting this product.');}}
         const quote=this.payments.quote(product);
         const order=await this.orders.create(buyer,product,update.update_id,{username:user.username,paymentQuote:quote});
         const instructions=await this.payments.createPaymentInstructions(order);

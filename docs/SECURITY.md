@@ -1,5 +1,23 @@
 # Security and Privacy
 
+## Private inventory boundary (prepared 2026-10-19; disabled)
+
+Inventory routes require trusted Origin and a verified strict operator claim;
+the coordinator repeats authorization/rate checks. AES-256-GCM server envelopes
+bind credentials to unit/product IDs; separate HMAC claims detect exact duplicate
+credentials and protect intent receipts. Lists/audits expose no plaintext secrets.
+Reveals are separate POST/no-store/audited actions and expire from the UI. Neither
+credentials nor keyrings enter localStorage, public catalog, static assets or logs.
+A backed-up server keyring is mandatory; old keys must survive rotation/rollback.
+The existing same-project service identity only reads narrow CRM references in
+this feature. No extra browser access or Firestore rule change. See `INVENTORY.md`.
+
+New supplier token stays server-only. Only fixed-origin catalog/stock GETs exist;
+redirects/error responses are refused and body sizes bounded. No balance or order
+method is implemented. Exact equivalence/pool mappings are manual and cross-currency
+comparisons fail without an FX policy. Both new gates are disabled until configured
+and released. No real supplier credentials were collected in chat.
+
 Released partner routes verify Firebase identity and active owner UID on every
 read, and strict `atlasOperator:true` for administrative changes. Public referral
 events cannot set commission or order ownership. Opaque single-customer Telegram

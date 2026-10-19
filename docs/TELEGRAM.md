@@ -1,5 +1,49 @@
 # Atlas Market Telegram catalog
 
+## Private operator Add lead entry (released 2026-10-19)
+
+Only configured shop admins in matching private chats receive **➕ Add lead** in
+their menu. The entry or `/addlead` returns the fixed operator-gated CRM form link
+`https://atlascrm-c5722.web.app/?quick-add=1`. Buyer/catalog/channel/group menus
+receive no CRM control. Request `/menu` to refresh an old keyboard.
+No phone, username or notes pass through Telegram. The private form accepts
+either a phone or a WhatsApp username in one field; its help text mentions both. See [QUICK_ADD.md](QUICK_ADD.md).
+
+## Text and emoji catalog labels — 2026-10-19
+
+Operator selected standard emoji and readable text for catalog buttons without
+Premium. Every recognized product family now has a purpose-related emoji. Catalog
+and family menus use escaped HTML headings, spaced plan/price/stock lines, and
+clear category/plan navigation. Product detail sections use price, stock, details,
+requirements and reference symbols. The primary shop keyboard says Products;
+existing Buy buttons remain accepted. Request and refresh callbacks retain their
+existing data contracts and pricing/order behavior. Existing brand-image cards
+remain available separately; no custom-emoji purchase or pack is needed.
+Verification: 43 affected tests, Worker dry-run and private-value scan passed.
+
+## Telegram product presentation — released 2026-10-19
+
+Product details use escaped Telegram HTML headings, separate price/stock fields,
+spaced supplier paragraphs and bullets, order requirements and product references.
+The description cleaner strips supplier HTML/script/style content, preserves wording
+and bounds long descriptions with an explicit support prompt. Freshness timestamps
+use Bangladesh time; stale catalog warnings remain visible. Refresh price & stock
+updates the existing detail message using current catalog data (normal 60-second
+cache), without creating an order or resending the logo. Repeated unchanged edits
+are successful. Existing orders keep their saved quotes; old Telegram messages and
+published channel posts are snapshots until reopened/refreshed or explicitly edited.
+
+Selecting a mapped family or product shows its actual brand favicon as a photo
+from the same allowlisted brand-domain map used by the website. Five featured
+logo URLs were checked for successful image responses. Logo images are separate
+from text buttons and require no Telegram Premium. Unmapped products keep existing
+image/text fallbacks; confirmed photo failures still permit readable text details.
+No custom-emoji pack, Premium purchase or channel broadcast is introduced.
+Released to the existing Worker and Firebase Hosting. All 145 tests, Worker
+dry-run and mocked workerd/SQLite manual-payment smoke pass. No real Telegram
+message was sent for verification; the next incoming user request exercises
+Telegram rendering.
+
 ## Live shop transport — 2026-10-14
 
 After explicit user approval, the hosted shop was deployed/activated and Telegram
@@ -96,7 +140,7 @@ invent a universal warranty. Product descriptions come from the supplier and may
 contain claims that the operator must verify.
 
 Prices use the same server adapter as the storefront: supplier unit price plus
-10%, rounded to the currency's decimal units. Markup is applied once before the
+a stock-based 10–40% markup (see `CATALOG.md`), rounded to the currency's decimal units. Markup is applied once before the
 data reaches either interface. Promotional conditions are informational, not
 an implemented checkout/discount engine. Inventory can change between requests;
 confirm price/stock before arranging a purchase.
