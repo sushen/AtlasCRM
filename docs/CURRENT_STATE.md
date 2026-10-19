@@ -12,6 +12,9 @@ match staging. Private file probes return 404, Worker health is 200 and anonymou
 inventory is denied. Existing Telegram webhook remains connected, zero pending.
 NAM and automatic WhatsApp capture/replies remain inactive. Signed-in production
 UI verification still awaits the operator's live Firebase login in the browser.
+The attempted Google sign-in in the in-app browser returned a connection error;
+no authenticated live CRM session or account assignment write was performed in
+that browser. This is a remaining verification limitation, not a successful login.
 See DEPLOYMENT.md for receipts and rollback; earlier local-only entries are history.
 
 ## CRM publication authorized — 2026-10-19
